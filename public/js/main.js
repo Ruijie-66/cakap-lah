@@ -39,6 +39,21 @@ let submitting = false; // guards the STOP-click / auto-stop race
 // so the flag, not the recorder, is what makes armMic a no-op on barge-in.
 let micHeld = false;
 
+/**
+ * True while the player owns the microphone — from the instant they ask for it
+ * until the clip is captured.
+ *
+ * Barge-in makes the engine and the mic run concurrently: the cancelled
+ * `speak()` resolves, the engine walks on to the next beat, and its `step` /
+ * `speaking` events arrive while the recording is still running. Rendering the
+ * engine's idea of the mic state then would disable the STOP button and drop
+ * `body[data-mic]` out of `recording` — a dead control and a UI claiming it is
+ * not recording while the visualiser is still moving. The live recording always
+ * outranks the engine: everything else on those events still renders, only the
+ * mic state and the phase text defer.
+ */
+const micBusy = () => micHeld || !!recorder?.isRecording();
+
 ui.setMockBadge(api.isMockMode());
 ui.setLevel(level);
 
@@ -76,8 +91,10 @@ function handleEvent(type, payload = {}) {
       ui.setHint(payload.hint);
       ui.setSteps(payload.stepCount, payload.stepNumber - 1);
       ui.setNpcLine(payload.step.tts_prompt);
-      ui.setPhase(`Giliran ${payload.stepNumber} / ${payload.stepCount}`);
-      ui.setMic('wait', 'Dengar dulu…');
+      if (!micBusy()) {
+        ui.setPhase(`Giliran ${payload.stepNumber} / ${payload.stepCount}`);
+        ui.setMic('wait', 'Dengar dulu…');
+      }
       break;
 
     case 'narrator':
@@ -93,14 +110,16 @@ function handleEvent(type, payload = {}) {
 
     case 'speaking':
       ui.setPortraitState(payload.who === 'npc' ? 'talking' : npcRestState);
-      ui.setPhase(
-        payload.who === 'narrator'
-          ? 'Narrator bercakap…'
-          : payload.who === 'coach'
-            ? 'Coach bercakap…'
-            : `${ui.el.npcName.textContent || 'NPC'} bercakap…`,
-      );
-      if (payload.who !== 'coach') ui.setMic('ready', 'Tekan untuk potong & cakap');
+      if (!micBusy()) {
+        ui.setPhase(
+          payload.who === 'narrator'
+            ? 'Narrator bercakap…'
+            : payload.who === 'coach'
+              ? 'Coach bercakap…'
+              : `${ui.el.npcName.textContent || 'NPC'} bercakap…`,
+        );
+        if (payload.who !== 'coach') ui.setMic('ready', 'Tekan untuk potong & cakap');
+      }
       ui.setPipeline(payload.who === 'npc' ? 'tts' : null);
       break;
 
@@ -167,7 +186,10 @@ function handleEvent(type, payload = {}) {
       ui.setMic('wait', 'Tekan “Cuba lagi”');
       ui.setPhase('Ada masalah teknikal — markah anda tidak terjejas.');
       ui.showError(payload.message);
-      errorAction = payload.kind === 'scenario' ? 'home' : 'retry-turn';
+      // A scenario that failed to load is the one error a cold-start network
+      // hiccup actually produces, and it is retryable: reload the same mission
+      // at the same level. "Balik menu" beside it is the way out.
+      errorAction = payload.kind === 'scenario' ? 'reload-mission' : 'retry-turn';
       break;
 
     case 'mission-end':
@@ -364,8 +386,9 @@ ui.el.coachBtn.addEventListener('click', () => {
 
 ui.el.errorRetryBtn.addEventListener('click', () => {
   ui.hideError();
-  if (errorAction === 'home') {
-    goHome();
+  if (errorAction === 'reload-mission') {
+    if (lastScenarioId) startMission(lastScenarioId);
+    else goHome();
     return;
   }
   engine.retryAfterError();
