@@ -19,6 +19,7 @@ export const ANSWER_KEY_FIELDS = Object.freeze([
   'sample_answers',
   'expected_semantics',
   'fallback_concepts',
+  'key_concepts',
 ]);
 
 function loadAll() {
