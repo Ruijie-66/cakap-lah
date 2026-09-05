@@ -1,0 +1,20 @@
+{
+  "name": "cakap-lah",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CAKAP LAH! - voice-controlled Bahasa Melayu practice game",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "probe": "node scripts/probe.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^2.3.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
