@@ -15,6 +15,7 @@ import {
   fallbackEvaluate,
   fallbackSummarise,
   summaryBandFor,
+  coachingLanguage,
 } from '../server/game/scoring.js';
 import { getScenario } from '../server/game/scenarios.js';
 import { findStep } from '../server/game/branching.js';
@@ -164,4 +165,40 @@ test('summary bands', () => {
   assert.equal(summaryBandFor(84), 'mission_passed');
   assert.equal(summaryBandFor(60), 'almost');
   assert.equal(summaryBandFor(10), 'retry');
+});
+
+// --- coaching language: English at L1, Bahasa Melayu at L2/L3 ---------------
+
+test('coachingLanguage is english at L1 and BM at L2/L3', () => {
+  assert.equal(coachingLanguage(1), 'en');
+  assert.equal(coachingLanguage(2), 'ms');
+  assert.equal(coachingLanguage(3), 'ms');
+  assert.equal(coachingLanguage(undefined), 'ms');
+});
+
+test('fallback coaching is ENGLISH at level 1 and BAHASA MELAYU at levels 2 and 3', () => {
+  const l1 = fallbackEvaluate({ step: mamakOrder, transcript: 'teh tarik', level: 1 });
+  // No BM function words in the L1 coaching, and it must not borrow the
+  // BM-authored retry_hint.
+  for (const field of ['what_worked', 'improvement']) {
+    assert.ok(!/\b(anda|cuba|sebut|supaya|maksud)\b/i.test(l1[field]), `L1 ${field} must be English: ${l1[field]}`);
+  }
+  assert.notEqual(l1.improvement, mamakOrder.retry_hint);
+
+  for (const level of [2, 3]) {
+    const out = fallbackEvaluate({ step: mamakOrder, transcript: 'teh tarik', level });
+    assert.ok(/\b(anda|cuba|sebut)\b/i.test(out.what_worked + ' ' + out.improvement), `L${level} coaching must be BM`);
+  }
+  // npc_reply is Bahasa Melayu at EVERY level.
+  assert.equal(l1.npc_reply, fallbackEvaluate({ step: mamakOrder, transcript: 'x', level: 2 }).npc_reply);
+  assert.ok(/jom/i.test(l1.npc_reply));
+});
+
+test('summary fallback coaching follows the same level rule', () => {
+  const l1 = fallbackSummarise({ turnScores: [{ overall_score: 80 }], level: 1 });
+  const l2 = fallbackSummarise({ turnScores: [{ overall_score: 80 }], level: 2 });
+  assert.ok(!/\banda\b/i.test(l1.summary + l1.strengths.join(' ') + l1.improvements.join(' ')));
+  assert.ok(/\banda\b/i.test(l2.summary));
+  // The verdict is the game's Malaysian voice at every level.
+  assert.equal(l1.verdict, l2.verdict);
 });

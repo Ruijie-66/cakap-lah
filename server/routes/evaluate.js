@@ -126,7 +126,7 @@ router.post('/api/evaluate', async (req, res) => {
     // /api/summarise does. (?fail=eval therefore exercises THIS path.)
     console.warn(`[evaluate] adapter threw, using fallback: ${err.message}`);
     if (!isMockRequest(req)) noteEvaluatorFallback('upstream_error');
-    raw = fallbackEvaluate({ step, transcript, reason: 'upstream_error' });
+    raw = fallbackEvaluate({ step, transcript, level, reason: 'upstream_error' });
   }
 
   // ---- Server-side derivation ------------------------------------------------

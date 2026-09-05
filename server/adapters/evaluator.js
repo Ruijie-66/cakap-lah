@@ -19,7 +19,12 @@ import {
   llmApiKey,
   hasLlmKey,
 } from '../config.js';
-import { fallbackEvaluate, fallbackSummarise } from '../game/scoring.js';
+import {
+  fallbackEvaluate,
+  fallbackSummarise,
+  coachingLanguage,
+  normaliseTranscript,
+} from '../game/scoring.js';
 
 // ---------------------------------------------------------------------------
 // Prompts (5.4 in the brief — implemented faithfully)
@@ -33,7 +38,19 @@ export const TURN_SYSTEM_PROMPT = `You are the evaluator for CAKAP LAH!, a Bahas
 - Code-switch policy is \`{allowed_code_switch}\`: **beginner** — Manglish **passes** if the task is done; offer the BM replacement as coaching, never failure. **intermediate** — may pass; reduce \`naturalness_score\` where a normal BM alternative exists. **advanced** — expect predominantly BM except proper nouns and technical terms. This axis is about *how much BM*, not formality. **Never penalise casual register.**
 - Be encouraging. Never mock the learner. Humour targets the situation, never the person.
 - \`what_worked\` / \`improvement\`: ONE short sentence each.
-- \`npc_reply\`: in character, natural Malaysian BM, 1–2 sentences, reacting to what the learner **actually said**.`;
+{coaching_language}
+- \`npc_reply\`: in character, natural Malaysian BM, 1–2 sentences, reacting to what the learner **actually said**. \`npc_reply\` is ALWAYS Bahasa Melayu, at every level, whatever language the coaching is in.`;
+
+/**
+ * The coaching-language clause spliced into the turn prompt. Level 1 learners
+ * are beginners who still read the English hint on screen; coaching them in a
+ * language they cannot yet read is the classic mistake. Levels 2 and 3 wean off
+ * English exactly as the on-screen hints do (L2 shows task_ms, L3 shows none).
+ */
+export const TURN_COACHING_LANGUAGE_RULE = Object.freeze({
+  en: '- COACHING LANGUAGE — this learner is at LEVEL 1: write `what_worked` and `improvement` in **ENGLISH**. They are a beginner and still read the English hint on screen; Bahasa Melayu coaching would be unreadable to them. You may quote a BM word or phrase inside the English sentence.',
+  ms: '- BAHASA COACHING — pelajar ini di LEVEL {level}: tulis `what_worked` dan `improvement` dalam **BAHASA MELAYU**. Guna bahasa Melayu Malaysia yang santai dan mesra — macam kawan yang menyemangatkan, bukan bahasa buku teks. Ayat pendek, perkataan biasa. Jangan tulis dalam bahasa Inggeris, kecuali memetik perkataan Inggeris yang pelajar sendiri sebut.',
+});
 
 export const SUMMARY_SYSTEM_PROMPT = `You are the end-of-scenario reviewer for CAKAP LAH!, a Bahasa Melayu speaking-practice game. You have just watched a whole conversation between the learner and an NPC.
 
@@ -41,9 +58,27 @@ export const SUMMARY_SYSTEM_PROMPT = `You are the end-of-scenario reviewer for C
 - The per-turn scores are reference context only. You may score above or below their average and should say why in the summary.
 - \`summary\`: 2–3 sentences on how the conversation went as a whole.
 - \`strengths\` and \`improvements\`: short concrete phrases, 2 each where possible.
-- \`bm_upgrades\` is the most useful thing on the screen: harvest EVERY English or Manglish word or phrase the learner used anywhere in the conversation and give the natural Bahasa Melayu replacement, as {"you_said": "...", "try": "..."}. If the learner code-switched nowhere, return an empty array.
+{coaching_language}
+- \`bm_upgrades\` is the most useful thing on the screen: harvest the CODE-SWITCHES — the English or Manglish words and phrases the learner actually said anywhere in the conversation — and give the natural Bahasa Melayu replacement, as {"you_said": "...", "try": "..."}. Hard rules: \`you_said\` MUST be the English/Manglish the learner really spoke, copied from the conversation; \`try\` MUST be Bahasa Melayu; the two sides MUST be different — e.g. {"you_said": "less sweet", "try": "kurang manis"}. NEVER return a pair whose two sides are the same phrase, never "upgrade" Bahasa Melayu the learner already said (\`{"you_said": "kurang manis", "try": "kurang manis"}\` is exactly the useless output we forbid), and never invent words the learner did not say. If the learner code-switched nowhere, return an empty array — that is a good, correct answer, not a failure.
 - Be encouraging and specific. Never mock the learner.
-- \`verdict\`: a very short Malaysian-sounding line, e.g. "Dah boleh cakap."`;
+- \`verdict\`: a very short Malaysian-sounding line, e.g. "Dah boleh cakap." — always Malaysian BM, whatever language the coaching is in.`;
+
+/** The coaching-language clause spliced into the summariser prompt. */
+export const SUMMARY_COACHING_LANGUAGE_RULE = Object.freeze({
+  en: '- COACHING LANGUAGE — this learner is at LEVEL 1: write `summary`, `strengths` and `improvements` in **ENGLISH**. They are a beginner and still read the English hint on screen; Bahasa Melayu coaching would be unreadable to them. `verdict` and the `try` side of `bm_upgrades` stay Bahasa Melayu.',
+  ms: '- BAHASA COACHING — pelajar ini di LEVEL {level}: tulis `summary`, `strengths` dan `improvements` dalam **BAHASA MELAYU**. Guna bahasa Melayu Malaysia yang santai dan mesra — macam kawan yang menyemangatkan, bukan bahasa buku teks. Jangan tulis dalam bahasa Inggeris, kecuali memetik perkataan Inggeris yang pelajar sendiri sebut.',
+});
+
+/**
+ * Splice the level-appropriate coaching-language clause into a system prompt.
+ * @param {string} prompt prompt text containing the {coaching_language} slot
+ * @param {Object<string,string>} rules TURN_ or SUMMARY_COACHING_LANGUAGE_RULE
+ * @param {number|string} level
+ */
+export function withCoachingLanguage(prompt, rules, level) {
+  const lang = coachingLanguage(level);
+  return prompt.replace('{coaching_language}', rules[lang].replace('{level}', String(Number(level) || 2)));
+}
 
 // ---------------------------------------------------------------------------
 // Structured-output schemas
@@ -167,6 +202,22 @@ export function validateTurnOutput(raw) {
   };
 }
 
+/**
+ * A `bm_upgrades` pair earns its place on the end screen only if it actually
+ * teaches something: both sides non-empty AND genuinely different. A live run
+ * produced `{"you_said": "kurang manis", "try": "kurang manis"}`, which the UI
+ * renders as the same phrase struck through and then repeated — noise on the
+ * single most useful panel of the game. The prompt forbids it; this drops it
+ * anyway, because the prompt is a request and this is a guarantee.
+ *
+ * @param {{you_said: string, try: string}} u
+ */
+export function isUsefulUpgrade(u) {
+  const said = normaliseTranscript(u.you_said);
+  const tryIt = normaliseTranscript(u.try);
+  return Boolean(said) && Boolean(tryIt) && said !== tryIt;
+}
+
 /** @throws {MalformedOutputError} */
 export function validateSummaryOutput(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -179,6 +230,7 @@ export function validateSummaryOutput(raw) {
     ? raw.bm_upgrades
         .filter((u) => u && typeof u.you_said === 'string' && typeof u.try === 'string')
         .map((u) => ({ you_said: u.you_said.trim(), try: u.try.trim() }))
+        .filter(isUsefulUpgrade)
     : null;
   if (upgrades === null) throw new MalformedOutputError('field "bm_upgrades" must be an array');
 
@@ -370,17 +422,18 @@ export async function evaluate(input = {}) {
     console.warn('[evaluator] forced malformed output (fail=json): attempt 1/2 failed');
     console.warn('[evaluator] forced malformed output (fail=json): attempt 2/2 failed');
     noteEvaluatorFallback('malformed_output');
-    return fallbackEvaluate({ step, transcript, reason: 'malformed_output' });
+    return fallbackEvaluate({ step, transcript, level, reason: 'malformed_output' });
   }
 
   if (noKey()) {
     noteEvaluatorFallback('no_api_key');
-    return fallbackEvaluate({ step, transcript, reason: 'no_api_key' });
+    return fallbackEvaluate({ step, transcript, level, reason: 'no_api_key' });
   }
 
-  const system = TURN_SYSTEM_PROMPT.replace(
-    '{allowed_code_switch}',
-    cfg?.allowed_code_switch || 'intermediate',
+  const system = withCoachingLanguage(
+    TURN_SYSTEM_PROMPT.replace('{allowed_code_switch}', cfg?.allowed_code_switch || 'intermediate'),
+    TURN_COACHING_LANGUAGE_RULE,
+    level,
   );
 
   const user = {
@@ -392,6 +445,7 @@ export async function evaluate(input = {}) {
     task_goal: step?.task_en,
     expected_semantics: step?.expected_semantics || [],
     sample_answers: step?.sample_answers || [],
+    coaching_language: coachingLanguage(level) === 'en' ? 'english' : 'bahasa_melayu',
     stt_transcript: transcript,
     stt_confidence: sttConfidence ?? null,
     conversation_history: conversationHistory || [],
@@ -408,7 +462,7 @@ export async function evaluate(input = {}) {
 
   if (!ok) {
     noteEvaluatorFallback('llm_failed');
-    return fallbackEvaluate({ step, transcript, reason: 'llm_failed' });
+    return fallbackEvaluate({ step, transcript, level, reason: 'llm_failed' });
   }
   noteEvaluatorSuccess();
   return { ...ok, source: 'llm', fallback: false };
@@ -435,12 +489,12 @@ export async function summarise(input = {}) {
     console.warn('[evaluator] forced malformed output (fail=json): attempt 1/2 failed');
     console.warn('[evaluator] forced malformed output (fail=json): attempt 2/2 failed');
     noteEvaluatorFallback('malformed_output');
-    return fallbackSummarise({ turnScores, reason: 'malformed_output' });
+    return fallbackSummarise({ turnScores, level, reason: 'malformed_output' });
   }
 
   if (noKey()) {
     noteEvaluatorFallback('no_api_key');
-    return fallbackSummarise({ turnScores, reason: 'no_api_key' });
+    return fallbackSummarise({ turnScores, level, reason: 'no_api_key' });
   }
 
   const user = {
@@ -450,12 +504,13 @@ export async function summarise(input = {}) {
     npc_name: scenario?.npc_name,
     level: Number(level),
     allowed_code_switch: cfg?.allowed_code_switch,
+    coaching_language: coachingLanguage(level) === 'en' ? 'english' : 'bahasa_melayu',
     conversation: conversation || [],
     turn_scores: turnScores || [],
   };
 
   const ok = await attemptWithRetry({
-    system: SUMMARY_SYSTEM_PROMPT,
+    system: withCoachingLanguage(SUMMARY_SYSTEM_PROMPT, SUMMARY_COACHING_LANGUAGE_RULE, level),
     user,
     schema: SUMMARY_SCHEMA,
     schemaName: 'cakap_lah_conversation_summary',
@@ -465,7 +520,7 @@ export async function summarise(input = {}) {
 
   if (!ok) {
     noteEvaluatorFallback('llm_failed');
-    return fallbackSummarise({ turnScores, reason: 'llm_failed' });
+    return fallbackSummarise({ turnScores, level, reason: 'llm_failed' });
   }
   noteEvaluatorSuccess();
   return { ...ok, source: 'llm', fallback: false };

@@ -125,6 +125,49 @@ export function clampToPartialBand(n) {
 }
 
 /**
+ * Which language the COACHING (what_worked / improvement / summary / strengths /
+ * improvements) is written in. Level 1 learners are beginners who still get the
+ * English hint on screen (`task_en`) — coaching them in a language they cannot
+ * yet read is the classic mistake. Levels 2 and 3 wean off English exactly as
+ * the on-screen hints do. `npc_reply` is Bahasa Melayu at every level and is
+ * NOT affected by this.
+ *
+ * @param {number|string|undefined} level
+ * @returns {'en'|'ms'}
+ */
+export function coachingLanguage(level) {
+  return Number(level) === 1 ? 'en' : 'ms';
+}
+
+/** Generic fallback coaching, in both coaching languages. Deliberately vague:
+ *  the fallback did NOT judge the learner's specific sentence. */
+const FALLBACK_COACHING = Object.freeze({
+  en: Object.freeze({
+    what_worked: 'You kept going and gave it a try — that is the hard part.',
+    improvement: 'Try saying it again a bit more fully so your meaning comes through.',
+  }),
+  ms: Object.freeze({
+    what_worked: 'Anda terus bercakap dan cuba — teruskan.',
+    improvement: 'Cuba sebut semula dengan lebih lengkap supaya maksud anda jelas.',
+  }),
+});
+
+const FALLBACK_SUMMARY_TEXT = Object.freeze({
+  en: Object.freeze({
+    summary:
+      'You made it through the whole conversation. The score above is worked out from your turns, because the full reviewer could not be reached.',
+    strengths: Object.freeze(['You kept talking right to the end of the conversation.']),
+    improvements: Object.freeze(['Give it another go for more detailed feedback.']),
+  }),
+  ms: Object.freeze({
+    summary:
+      'Anda telah menyelesaikan perbualan ini. Skor di atas dikira daripada giliran-giliran anda kerana penilai penuh tidak dapat dihubungi.',
+    strengths: Object.freeze(['Anda terus bercakap sehingga habis perbualan.']),
+    improvements: Object.freeze(['Cuba sekali lagi untuk maklum balas yang lebih terperinci.']),
+  }),
+});
+
+/**
  * Deterministic fallback — used when the LLM fails twice or no key is set.
  *
  * NOT keyword matching of the answer: it checks the step's `fallback_concepts`,
@@ -136,10 +179,11 @@ export function clampToPartialBand(n) {
  *   1. Scores are capped inside the partial band (55-74) and never below it.
  *   2. Coaching text stays generic — it must not pretend to have judged the
  *      learner's specific sentence.
+ *   3. Coaching language follows the level: English at L1, BM at L2/L3.
  *
- * @param {{step: object, transcript: string, reason?: string}} input
+ * @param {{step: object, transcript: string, level?: number, reason?: string}} input
  */
-export function fallbackEvaluate({ step, transcript, reason = 'evaluator_unavailable' } = {}) {
+export function fallbackEvaluate({ step, transcript, level, reason = 'evaluator_unavailable' } = {}) {
   const normalised = normaliseTranscript(transcript);
   const groups = Array.isArray(step && step.fallback_concepts) ? step.fallback_concepts : [];
 
@@ -162,14 +206,18 @@ export function fallbackEvaluate({ step, transcript, reason = 'evaluator_unavail
     naturalness_score: clampToPartialBand(base),
   };
 
+  const lang = coachingLanguage(level);
+  const generic = FALLBACK_COACHING[lang];
+
   return {
     ...scores,
     intent_pass: true,
     // Generic coaching only — we did not actually judge this sentence.
-    what_worked: 'Anda terus bercakap dan cuba — teruskan.',
-    improvement:
-      (step && step.retry_hint) ||
-      'Cuba sebut semula dengan lebih lengkap supaya maksud anda jelas.',
+    what_worked: generic.what_worked,
+    // `retry_hint` is authored in Bahasa Melayu, so it is only usable when the
+    // coaching language IS Bahasa Melayu (L2/L3). At L1 we stay in English.
+    improvement: (lang === 'ms' && step && step.retry_hint) || generic.improvement,
+    // npc_reply is Bahasa Melayu at every level.
     npc_reply: 'Ha, ok ok. Jom kita teruskan.',
     source: 'fallback',
     fallback: true,
@@ -184,7 +232,7 @@ export function fallbackEvaluate({ step, transcript, reason = 'evaluator_unavail
  * a generic band/verdict, and an empty bm_upgrades array. Never crashes the
  * end screen even with zero turns.
  */
-export function fallbackSummarise({ turnScores = [], reason = 'evaluator_unavailable' } = {}) {
+export function fallbackSummarise({ turnScores = [], level, reason = 'evaluator_unavailable' } = {}) {
   const nums = (Array.isArray(turnScores) ? turnScores : [])
     .map((t) => (typeof t === 'number' ? t : t && t.overall_score))
     .map((n) => Number(n))
@@ -192,15 +240,17 @@ export function fallbackSummarise({ turnScores = [], reason = 'evaluator_unavail
 
   const overall = nums.length ? Math.round(nums.reduce((a, b) => a + b, 0) / nums.length) : 60;
   const band = summaryBandFor(overall);
+  const text = FALLBACK_SUMMARY_TEXT[coachingLanguage(level)];
 
   return {
     overall_score: overall,
     band,
+    // The verdict is a Malaysian catchphrase at every level — it is flavour,
+    // not coaching, and it is the game's voice.
     verdict: SUMMARY_VERDICTS[band],
-    summary:
-      'Anda telah menyelesaikan perbualan ini. Skor di atas dikira daripada giliran-giliran anda kerana penilai penuh tidak dapat dihubungi.',
-    strengths: ['Anda terus bercakap sehingga habis perbualan.'],
-    improvements: ['Cuba sekali lagi untuk maklum balas yang lebih terperinci.'],
+    summary: text.summary,
+    strengths: [...text.strengths],
+    improvements: [...text.improvements],
     bm_upgrades: [],
     source: 'fallback',
     fallback: true,

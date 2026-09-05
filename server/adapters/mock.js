@@ -5,7 +5,7 @@
 // ?mock=1 / x-mock: 1, so the UI can be developed and demoed without a
 // live Revolab API key.
 
-import { fallbackEvaluate, fallbackSummarise } from '../game/scoring.js';
+import { fallbackEvaluate, fallbackSummarise, coachingLanguage } from '../game/scoring.js';
 
 const MOCK_DELAY_MS = 300;
 
@@ -74,18 +74,37 @@ const MOCK_NPC_REPLIES = {
   retry: ['Hah? Maaf, tak dengar. Boleh ulang?', 'Eh, apa tu? Cakap sekali lagi boleh?'],
 };
 
+// Coaching language follows the level, exactly as the live evaluator does:
+// English at Level 1 (the beginner still reads the English hint), Bahasa Melayu
+// at Levels 2 and 3. npc_reply stays BM at every level.
 const MOCK_COACHING = {
-  success: {
-    what_worked: 'Maksud anda jelas dan tugasan tercapai.',
-    improvement: 'Cuba tambah satu perkataan sopan seperti "boleh" untuk bunyi lebih natural.',
+  ms: {
+    success: {
+      what_worked: 'Maksud anda jelas dan tugasan tercapai.',
+      improvement: 'Cuba tambah satu perkataan sopan seperti "boleh" untuk bunyi lebih natural.',
+    },
+    partial: {
+      what_worked: 'Anda berjaya sampaikan sebahagian besar maksud anda.',
+      improvement: 'Sebut butiran yang tertinggal supaya permintaan anda lengkap.',
+    },
+    retry: {
+      what_worked: 'Anda berani cuba bercakap — itu langkah pertama.',
+      improvement: 'Cuba sebut tugasan itu dengan ayat yang lebih lengkap.',
+    },
   },
-  partial: {
-    what_worked: 'Anda berjaya sampaikan sebahagian besar maksud anda.',
-    improvement: 'Sebut butiran yang tertinggal supaya permintaan anda lengkap.',
-  },
-  retry: {
-    what_worked: 'Anda berani cuba bercakap — itu langkah pertama.',
-    improvement: 'Cuba sebut tugasan itu dengan ayat yang lebih lengkap.',
+  en: {
+    success: {
+      what_worked: 'Your meaning was clear and the task got done.',
+      improvement: 'Add one polite word like "boleh" to sound more natural.',
+    },
+    partial: {
+      what_worked: 'You got most of your meaning across.',
+      improvement: 'Say the detail you left out so the request is complete.',
+    },
+    retry: {
+      what_worked: 'You had a go at speaking — that is the first step.',
+      improvement: 'Try saying the task in a fuller sentence.',
+    },
   },
 };
 
@@ -101,7 +120,7 @@ const MOCK_SCORES = {
  * demoed without spending credits.
  */
 export async function evaluate(input = {}) {
-  const { step, transcript = '' } = input;
+  const { step, transcript = '', level } = input;
 
   if (input.forceUpstreamError) {
     throw new Error('Simulated evaluator upstream failure (fail=eval).');
@@ -109,7 +128,7 @@ export async function evaluate(input = {}) {
   if (input.forceMalformed) {
     console.warn('[mock evaluator] forced malformed output (fail=json): attempt 1/2 failed');
     console.warn('[mock evaluator] forced malformed output (fail=json): attempt 2/2 failed');
-    return fallbackEvaluate({ step, transcript, reason: 'malformed_output' });
+    return fallbackEvaluate({ step, transcript, level, reason: 'malformed_output' });
   }
 
   await delay(MOCK_DELAY_MS);
@@ -127,16 +146,31 @@ export async function evaluate(input = {}) {
   return {
     ...MOCK_SCORES[result],
     intent_pass: result === 'success',
-    ...MOCK_COACHING[result],
+    ...MOCK_COACHING[coachingLanguage(level)][result],
     npc_reply: replies[hash(transcript) % replies.length],
     source: 'mock',
     fallback: false,
   };
 }
 
+const MOCK_SUMMARY_TEXT = {
+  ms: {
+    summary:
+      'Anda mula sedikit teragak-agak tetapi pulih pada giliran seterusnya dan berjaya menyampaikan maksud anda. Nada anda sesuai untuk situasi ini. Perbualan ini akan berjaya dalam kehidupan sebenar.',
+    strengths: ['Maksud anda jelas walaupun ayat pendek.', 'Anda pulih selepas giliran yang tersasar.'],
+    improvements: ['Kurangkan tukar ke bahasa Inggeris.', 'Tambah kata sopan seperti "boleh" dan "ya".'],
+  },
+  en: {
+    summary:
+      'You started a little hesitant but recovered on the next turn and got your meaning across. Your tone suited the situation. This conversation would have worked in real life.',
+    strengths: ['Your meaning was clear even in short sentences.', 'You recovered after a turn that went off track.'],
+    improvements: ['Switch into English a little less.', 'Add polite words like "boleh" and "ya".'],
+  },
+};
+
 /** Mock summarise — same signature/shape as adapters/evaluator.js#summarise. */
 export async function summarise(input = {}) {
-  const { turnScores = [], conversation = [] } = input;
+  const { turnScores = [], conversation = [], level } = input;
 
   if (input.forceUpstreamError) {
     throw new Error('Simulated summariser upstream failure (fail=eval).');
@@ -144,7 +178,7 @@ export async function summarise(input = {}) {
   if (input.forceMalformed) {
     console.warn('[mock evaluator] forced malformed output (fail=json): attempt 1/2 failed');
     console.warn('[mock evaluator] forced malformed output (fail=json): attempt 2/2 failed');
-    return fallbackSummarise({ turnScores, reason: 'malformed_output' });
+    return fallbackSummarise({ turnScores, level, reason: 'malformed_output' });
   }
 
   await delay(MOCK_DELAY_MS);
@@ -172,10 +206,7 @@ export async function summarise(input = {}) {
   return {
     overall_score: overall,
     verdict: overall >= 75 ? 'Dah boleh cakap.' : 'Hampir dah — cuba sekali lagi.',
-    summary:
-      'Anda mula sedikit teragak-agak tetapi pulih pada giliran seterusnya dan berjaya menyampaikan maksud anda. Nada anda sesuai untuk situasi ini. Perbualan ini akan berjaya dalam kehidupan sebenar.',
-    strengths: ['Maksud anda jelas walaupun ayat pendek.', 'Anda pulih selepas giliran yang tersasar.'],
-    improvements: ['Kurangkan tukar ke bahasa Inggeris.', 'Tambah kata sopan seperti "boleh" dan "ya".'],
+    ...MOCK_SUMMARY_TEXT[coachingLanguage(level)],
     bm_upgrades: upgrades,
     source: 'mock',
     fallback: false,

@@ -57,7 +57,7 @@ router.post('/api/summarise', async (req, res) => {
     // Never crash the end screen.
     console.warn(`[summarise] adapter threw, using fallback: ${err.message}`);
     if (!isMockRequest(req)) noteEvaluatorFallback('upstream_error');
-    raw = fallbackSummarise({ turnScores, reason: 'upstream_error' });
+    raw = fallbackSummarise({ turnScores, level, reason: 'upstream_error' });
   }
 
   const overall = Math.min(100, Math.max(0, Math.round(Number(raw.overall_score) || 0)));

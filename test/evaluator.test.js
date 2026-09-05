@@ -10,6 +10,10 @@ import {
   SUMMARY_SCHEMA,
   evaluate as liveEvaluate,
   summarise as liveSummarise,
+  TURN_COACHING_LANGUAGE_RULE,
+  SUMMARY_COACHING_LANGUAGE_RULE,
+  withCoachingLanguage,
+  isUsefulUpgrade,
 } from '../server/adapters/evaluator.js';
 import * as mock from '../server/adapters/mock.js';
 import { getScenario, publicScenario, ANSWER_KEY_FIELDS } from '../server/game/scenarios.js';
@@ -198,4 +202,75 @@ test('publicScenario resolves the mall_01 makcik step override at L3', () => {
   assert.equal(last.id, 'give_directions');
   assert.equal(last.npc_name, 'Makcik');
   assert.notEqual(last.voice_id, pub.voice_id);
+});
+
+// --- Fix 1: coaching language follows the level ----------------------------
+
+test('the coaching-language slot is spliced with the ENGLISH rule at L1', () => {
+  for (const [prompt, rules] of [
+    [TURN_SYSTEM_PROMPT, TURN_COACHING_LANGUAGE_RULE],
+    [SUMMARY_SYSTEM_PROMPT, SUMMARY_COACHING_LANGUAGE_RULE],
+  ]) {
+    assert.ok(prompt.includes('{coaching_language}'), 'prompt has the slot');
+    const l1 = withCoachingLanguage(prompt, rules, 1);
+    assert.ok(!l1.includes('{coaching_language}'), 'slot filled at L1');
+    assert.ok(/\*\*ENGLISH\*\*/.test(l1), 'L1 asks for English coaching');
+    assert.ok(!/\*\*BAHASA MELAYU\*\*/.test(l1));
+
+    for (const level of [2, 3]) {
+      const out = withCoachingLanguage(prompt, rules, level);
+      assert.ok(!out.includes('{coaching_language}'), `slot filled at L${level}`);
+      assert.ok(/\*\*BAHASA MELAYU\*\*/.test(out), `L${level} asks for BM coaching`);
+      assert.ok(out.includes(`LEVEL ${level}`), 'the level is named in the rule');
+      assert.ok(!/\*\*ENGLISH\*\*/.test(out));
+    }
+  }
+});
+
+test('npc_reply is pinned to Bahasa Melayu at every level in the turn prompt', () => {
+  for (const level of [1, 2, 3]) {
+    const p = withCoachingLanguage(TURN_SYSTEM_PROMPT, TURN_COACHING_LANGUAGE_RULE, level);
+    assert.ok(/`npc_reply` is ALWAYS Bahasa Melayu/.test(p), `L${level} pins npc_reply to BM`);
+  }
+});
+
+// --- Fix 2: bm_upgrades must never be an identical pair ---------------------
+
+test('isUsefulUpgrade rejects identical pairs modulo case, punctuation, whitespace', () => {
+  assert.equal(isUsefulUpgrade({ you_said: 'less sweet', try: 'kurang manis' }), true);
+  assert.equal(isUsefulUpgrade({ you_said: 'kurang manis', try: 'kurang manis' }), false);
+  assert.equal(isUsefulUpgrade({ you_said: 'Kurang Manis!', try: 'kurang  manis' }), false);
+  assert.equal(isUsefulUpgrade({ you_said: '  ', try: 'kurang manis' }), false);
+  assert.equal(isUsefulUpgrade({ you_said: 'less sweet', try: '' }), false);
+});
+
+const GOOD_SUMMARY = {
+  overall_score: 84,
+  band: 'mission_passed',
+  verdict: 'Dah boleh cakap.',
+  summary: 'Bagus.',
+  strengths: ['a'],
+  improvements: ['b'],
+  bm_upgrades: [],
+};
+
+test('validateSummaryOutput drops useless bm_upgrades pairs but keeps real ones', () => {
+  const out = validateSummaryOutput({
+    ...GOOD_SUMMARY,
+    bm_upgrades: [
+      { you_said: 'kurang manis', try: 'kurang manis' },
+      { you_said: 'less sweet', try: 'kurang manis' },
+      { you_said: 'Thanks.', try: 'terima kasih' },
+      { you_said: 'Terima kasih', try: 'terima  kasih!' },
+    ],
+  });
+  assert.deepEqual(out.bm_upgrades, [
+    { you_said: 'less sweet', try: 'kurang manis' },
+    { you_said: 'Thanks.', try: 'terima kasih' },
+  ]);
+});
+
+test('an empty bm_upgrades array is a valid answer', () => {
+  const out = validateSummaryOutput({ ...GOOD_SUMMARY, bm_upgrades: [] });
+  assert.deepEqual(out.bm_upgrades, []);
 });
