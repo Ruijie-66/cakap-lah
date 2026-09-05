@@ -21,6 +21,16 @@ const PORTRAIT_FACE = {
 
 const SCENE_EMOJI = { mamak: '🫖', mall: '🛍️', office: '💼' };
 
+
+/** Left-to-right order of the visible pipeline. `summary` is not on the rail. */
+const PIPELINE_ORDER = ['stt', 'eval', 'tts'];
+
+/** Publish 0..1 mic loudness as a CSS variable — the mic halo breathes on it. */
+function publishMicLevel(level) {
+  const holder = document.querySelector('.mic-holder');
+  if (holder) holder.style.setProperty('--lvl', String(Math.max(0, Math.min(1, Number(level) || 0))));
+}
+
 export function createUI() {
   const el = {
     screens: {
@@ -55,6 +65,7 @@ export function createUI() {
     phaseLabel: $('phaseLabel'),
     micBtn: $('micBtn'),
     micHint: $('micHint'),
+    micLabel: $('micLabel'),
     timer: $('timer'),
     viz: $('viz'),
     pipeline: $('pipeline'),
@@ -271,9 +282,22 @@ export function createUI() {
         busy: { label: '…', disabled: true, hint: hintText ?? 'Memproses…' },
       };
       const cfg = map[mode] || map.wait;
-      el.micBtn.textContent = cfg.label;
+      // The button holds an SVG icon — never overwrite its content.
+      el.micLabel.textContent = cfg.label;
       el.micBtn.disabled = cfg.disabled;
       el.micBtn.dataset.mode = mode;
+      el.micBtn.setAttribute('aria-label', cfg.hint);
+      // The recording state is the loudest thing in the app: the dock, the
+      // visualiser frame and the REC badge all key off this one attribute.
+      document.body.dataset.mic = mode;
+      if (mode !== 'recording') {
+        publishMicLevel(0);
+        // A stale "21.0s" sitting under an idle mic reads like a bug.
+        if (mode === 'ready' || mode === 'wait') {
+          el.timer.textContent = '0.0s';
+          el.timer.classList.remove('near-cap');
+        }
+      }
       el.micHint.textContent = cfg.hint;
       el.micHint.classList.toggle('live', mode === 'recording');
     },
@@ -283,12 +307,25 @@ export function createUI() {
       el.timer.classList.toggle('near-cap', ms >= 16000);
     },
 
-    /** @param {'stt'|'eval'|'tts'|'summary'|null} stage */
+    /**
+     * The STT → evaluate → TTS pipeline, shown as it happens. Stages already
+     * passed are ticked off so a viewer can see the work move along the rail
+     * rather than watching one anonymous spinner.
+     * @param {'stt'|'eval'|'tts'|'summary'|null} stage
+     */
     setPipeline(stage) {
       el.pipeline.hidden = !stage;
-      [...el.pipeline.querySelectorAll('.pipe-step')].forEach((s) => {
-        s.classList.toggle('is-on', s.dataset.stage === stage);
+      const at = PIPELINE_ORDER.indexOf(stage);
+      [...el.pipeline.querySelectorAll('.pipe-step')].forEach((node) => {
+        const i = PIPELINE_ORDER.indexOf(node.dataset.stage);
+        node.classList.toggle('is-on', stage != null && i === at);
+        node.classList.toggle('is-done', at > -1 && i > -1 && i < at);
       });
+    },
+
+    /** 0..1 mic loudness, published to CSS so the mic glow breathes with it. */
+    setMicLevel(level) {
+      publishMicLevel(level);
     },
 
     /** Clear only the previous turn's transcript + score, keeping notices. */
@@ -345,7 +382,13 @@ export function createUI() {
       el.bandLabel.textContent = band.label;
       cancelCount?.();
       el.scoreNum.textContent = '0';
-      cancelCount = countUp(el.scoreNum, evaluation.overall_score, { durationMs: 900 });
+      // The band only stamps in once the number has landed — that ordering is
+      // the beat: number climbs, verdict hits.
+      el.resultPanel.classList.remove('is-landed');
+      cancelCount = countUp(el.scoreNum, evaluation.overall_score, {
+        durationMs: 900,
+        onDone: () => el.resultPanel.classList.add('is-landed'),
+      });
 
       const coaching =
         evaluation.result === 'success'
@@ -434,7 +477,10 @@ export function createUI() {
         for (const u of upgrades) {
           const row = document.createElement('div');
           row.className = 'upgrade-row';
-          row.innerHTML = `<span class="said"></span><span class="arrow">→</span><span class="better"></span>`;
+          row.innerHTML =
+            `<span class="idx"></span><span class="said"></span>` +
+            `<span class="arrow" aria-hidden="true">→</span><span class="better"></span>`;
+          row.querySelector('.idx').textContent = String(el.endUpgrades.childElementCount + 1);
           row.querySelector('.said').textContent = u.you_said ?? '';
           row.querySelector('.better').textContent = u.try ?? '';
           el.endUpgrades.appendChild(row);

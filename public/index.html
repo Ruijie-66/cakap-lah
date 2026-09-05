@@ -12,26 +12,39 @@
 <section class="screen is-active" id="screen-home">
   <div class="home-wrap">
     <header class="home-head">
-      <h1 class="logo">CAKAP <span class="lah">LAH!</span></h1>
-      <p class="tagline">Three missions. One mic. Speak Bahasa Melayu or go thirsty.</p>
+      <h1 class="logo"><span class="cakap">CAKAP</span> <span class="lah">LAH!</span></h1>
+      <p class="tagline">
+        You don’t <em>pick</em> the answer. You <b>say</b> it — and Malaysia answers back.
+      </p>
+      <p class="subtagline">Tiga misi. Satu mic. Cakap Bahasa Melayu atau balik dahaga.</p>
       <span class="badge" id="mockBadge" hidden>mock mode</span>
     </header>
 
     <div class="level-picker" role="group" aria-label="Pilih tahap">
       <span class="level-label">Tahap</span>
-      <button class="level-btn is-on" type="button" aria-pressed="true" data-level="1">
-        <b>1</b><span>Santai</span><em>English hint</em>
-      </button>
-      <button class="level-btn" type="button" aria-pressed="false" data-level="2">
-        <b>2</b><span>Biasa</span><em>Hint dalam BM</em>
-      </button>
-      <button class="level-btn" type="button" aria-pressed="false" data-level="3">
-        <b>3</b><span>Power</span><em>No hint · extra twist</em>
-      </button>
+      <div class="level-btns">
+        <button class="level-btn is-on" type="button" aria-pressed="true" data-level="1">
+          <b>1</b><span>Santai</span><em>English hint</em>
+        </button>
+        <button class="level-btn" type="button" aria-pressed="false" data-level="2">
+          <b>2</b><span>Biasa</span><em>Hint dalam BM</em>
+        </button>
+        <button class="level-btn" type="button" aria-pressed="false" data-level="3">
+          <b>3</b><span>Power</span><em>No hint · extra twist</em>
+        </button>
+      </div>
     </div>
 
     <div class="cards" id="scenarioCards" aria-busy="true">
       <p class="loading-note">Memuatkan misi…</p>
+    </div>
+
+    <div class="how-it-works" aria-label="Bagaimana ia berfungsi">
+      <span class="how-step"><b>1</b>Dengar situasi</span>
+      <span class="how-arrow" aria-hidden="true">→</span>
+      <span class="how-step"><b>2</b>Cakap jawapan anda</span>
+      <span class="how-arrow" aria-hidden="true">→</span>
+      <span class="how-step"><b>3</b>AI nilai <i>maksud</i>, bukan ayat hafalan</span>
     </div>
 
     <p class="home-foot">
@@ -45,9 +58,10 @@
 <section class="screen" id="screen-play">
   <div class="scene" id="scene" data-scene="mamak">
     <div class="scene-art" id="sceneArt" aria-hidden="true"></div>
+    <div class="scene-veil" aria-hidden="true"></div>
 
     <div class="scene-bar">
-      <button class="ghost-btn" id="quitBtn" type="button">← Keluar</button>
+      <button class="ghost-btn back-btn" id="quitBtn" type="button">← Keluar</button>
       <div class="scene-title"><b id="playTitle">—</b><span class="pill" id="playLevel">Tahap 1</span></div>
       <div class="step-dots" id="stepDots" aria-label="Kemajuan"></div>
     </div>
@@ -59,8 +73,13 @@
     <div class="stage">
       <figure class="npc">
         <div class="portrait" id="portrait" data-state="idle">
-          <img id="portraitImg" alt="" hidden />
-          <div class="portrait-fallback" id="portraitFallback" aria-hidden="true"></div>
+          <span class="portrait-halo" aria-hidden="true"></span>
+          <span class="portrait-wave w1" aria-hidden="true"></span>
+          <span class="portrait-wave w2" aria-hidden="true"></span>
+          <span class="portrait-face">
+            <img id="portraitImg" alt="" hidden />
+            <span class="portrait-fallback" id="portraitFallback" aria-hidden="true"></span>
+          </span>
         </div>
         <figcaption class="npc-name" id="npcName">—</figcaption>
       </figure>
@@ -74,54 +93,88 @@
   </div>
 
   <div class="dock">
-    <div class="phase" id="phaseLabel">Bersedia…</div>
+    <div class="dock-inner">
+      <div class="phase-row">
+        <div class="phase" id="phaseLabel">Bersedia…</div>
+        <div class="rec-badge" aria-hidden="true"><i></i><span>RECORDING</span></div>
+      </div>
 
-    <div class="mic-row">
-      <button class="mic-btn" id="micBtn" type="button" disabled>MIC</button>
-      <div class="mic-side">
-        <canvas id="viz" aria-hidden="true"></canvas>
-        <div class="meta">
-          <span id="micHint">Tunggu…</span>
-          <span class="timer" id="timer">0.0s</span>
+      <div class="mic-row">
+        <div class="mic-holder">
+          <span class="mic-ring ring-1" aria-hidden="true"></span>
+          <span class="mic-ring ring-2" aria-hidden="true"></span>
+          <button class="mic-btn" id="micBtn" type="button" disabled>
+            <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <rect class="mic-body" x="9" y="2.5" width="6" height="11" rx="3" />
+              <path class="mic-arc" d="M5.5 11a6.5 6.5 0 0 0 13 0" />
+              <line class="mic-stem" x1="12" y1="17.5" x2="12" y2="21" />
+            </svg>
+            <span class="mic-stop" aria-hidden="true"></span>
+            <span class="mic-label" id="micLabel">MIC</span>
+          </button>
+        </div>
+
+        <div class="mic-side">
+          <div class="viz-wrap">
+            <canvas id="viz" aria-hidden="true"></canvas>
+            <span class="viz-idle" id="vizIdle">tekan mic bila anda sedia bercakap</span>
+          </div>
+          <div class="meta">
+            <span id="micHint">Tunggu…</span>
+            <span class="timer" id="timer">0.0s</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="pipeline" id="pipeline" hidden>
-      <span class="pipe-step" data-stage="stt">🎧 Dengar</span>
-      <span class="pipe-arrow">→</span>
-      <span class="pipe-step" data-stage="eval">🧠 Faham</span>
-      <span class="pipe-arrow">→</span>
-      <span class="pipe-step" data-stage="tts">🗣️ Jawab</span>
-    </div>
-
-    <div class="panel transcript-panel" id="transcriptPanel" hidden>
-      <span class="panel-label">Kami dengar</span>
-      <p class="said" id="transcriptText"></p>
-      <button class="ghost-btn small" id="transcriptRetryBtn" type="button" hidden disabled>
-        ↺ Cuba lagi (tiada penalti)
-      </button>
-    </div>
-
-    <div class="panel result-panel" id="resultPanel" hidden>
-      <div class="score-block">
-        <div class="score" id="scoreNum">0</div>
-        <div class="band" id="bandLabel">—</div>
+      <div class="pipeline" id="pipeline" hidden aria-live="polite">
+        <div class="pipe-rail" aria-hidden="true"><span class="pipe-shuttle"></span></div>
+        <div class="pipe-steps">
+          <div class="pipe-step" data-stage="stt">
+            <span class="pipe-dot" aria-hidden="true">🎧</span>
+            <span class="pipe-text"><b>Suara → teks</b><i>speech-to-text</i></span>
+          </div>
+          <div class="pipe-step" data-stage="eval">
+            <span class="pipe-dot" aria-hidden="true">🧠</span>
+            <span class="pipe-text"><b>Nilai maksud</b><i>LLM meaning score</i></span>
+          </div>
+          <div class="pipe-step" data-stage="tts">
+            <span class="pipe-dot" aria-hidden="true">🗣️</span>
+            <span class="pipe-text"><b>Teks → suara</b><i>text-to-speech</i></span>
+          </div>
+        </div>
       </div>
-      <div class="coach">
-        <p class="coach-line" id="coachLine"></p>
-        <button class="ghost-btn small" id="coachBtn" type="button">🔊 Coach</button>
+
+      <div class="panel transcript-panel" id="transcriptPanel" hidden>
+        <span class="panel-label">Kami dengar · speech-to-text</span>
+        <p class="said" id="transcriptText"></p>
+        <button class="ghost-btn small" id="transcriptRetryBtn" type="button" hidden disabled>
+          ↺ Cuba lagi (tiada penalti)
+        </button>
       </div>
-      <div class="subscores" id="subScores"></div>
-    </div>
 
-    <div class="panel notice" id="noticePanel" hidden></div>
+      <div class="panel result-panel" id="resultPanel" hidden>
+        <div class="score-block">
+          <div class="score-dial" aria-hidden="true"></div>
+          <div class="score" id="scoreNum">0</div>
+          <div class="band" id="bandLabel">—</div>
+        </div>
+        <div class="coach">
+          <span class="panel-label">Coach</span>
+          <p class="coach-line" id="coachLine"></p>
+          <div class="subscores" id="subScores"></div>
+          <button class="ghost-btn small" id="coachBtn" type="button">🔊 Dengar coach</button>
+        </div>
+      </div>
 
-    <div class="panel error-panel" id="errorPanel" hidden>
-      <p class="err-text" id="errorText"></p>
-      <div class="err-actions">
-        <button class="primary-btn" id="errorRetryBtn" type="button">Cuba lagi</button>
-        <button class="ghost-btn" id="errorHomeBtn" type="button">Balik menu</button>
+      <div class="panel notice" id="noticePanel" hidden></div>
+
+      <div class="panel error-panel" id="errorPanel" hidden>
+        <span class="panel-label">Masalah teknikal</span>
+        <p class="err-text" id="errorText"></p>
+        <div class="err-actions">
+          <button class="primary-btn" id="errorRetryBtn" type="button">Cuba lagi</button>
+          <button class="ghost-btn" id="errorHomeBtn" type="button">Balik menu</button>
+        </div>
       </div>
     </div>
   </div>
@@ -135,33 +188,38 @@
         <span class="end-score" id="endScore">0</span>
         <span class="end-of">/100</span>
       </div>
-      <div>
+      <div class="end-head-text">
         <div class="end-band" id="endBand">—</div>
         <h2 class="end-verdict" id="endVerdict">—</h2>
-        <div class="badge-chip" id="endBadge" hidden></div>
-        <button class="ghost-btn small" id="verdictSpeakBtn" type="button">🔊 Dengar coach</button>
+        <div class="end-head-row">
+          <div class="badge-chip" id="endBadge" hidden></div>
+          <button class="ghost-btn small" id="verdictSpeakBtn" type="button">🔊 Dengar coach</button>
+        </div>
       </div>
     </header>
 
     <p class="end-summary" id="endSummary"></p>
 
+    <div class="panel upgrades" id="endUpgradesPanel">
+      <div class="upgrades-head">
+        <span class="panel-label">BM upgrades</span>
+        <span class="upgrades-sub">Rojak keluar, Bahasa Melayu masuk — ayat anda, dibetulkan.</span>
+      </div>
+      <div id="endUpgrades"></div>
+    </div>
+
     <div class="end-cols">
-      <div class="panel">
+      <div class="panel col-good">
         <span class="panel-label">Kuat</span>
         <ul id="endStrengths"></ul>
       </div>
-      <div class="panel">
+      <div class="panel col-work">
         <span class="panel-label">Boleh baiki</span>
         <ul id="endImprovements"></ul>
       </div>
     </div>
 
-    <div class="panel upgrades" id="endUpgradesPanel">
-      <span class="panel-label">BM upgrades</span>
-      <div id="endUpgrades"></div>
-    </div>
-
-    <div class="panel">
+    <div class="panel transcript-panel-full">
       <span class="panel-label">Transkrip penuh</span>
       <ol class="transcript-log" id="endTranscript"></ol>
     </div>

@@ -13,7 +13,17 @@ import { createUI } from '/js/ui/screens.js';
 
 const ui = createUI();
 const player = createPlayer();
-const visualiser = createVisualiser(ui.el.viz);
+// Mamak-neon bars, and the live level fed back into CSS so the mic button
+// itself swells with the voice. This is the "we are listening" moment.
+const visualiser = createVisualiser(ui.el.viz, {
+  style: 'bars',
+  color: '#ff3d7f',
+  colorLow: '#ffb340',
+  colorHigh: '#ff3d7f',
+  glow: 'rgba(255, 61, 127, 0.55)',
+  idleColor: 'rgba(255, 255, 255, 0.14)',
+  onLevel: (level) => ui.setMicLevel(level),
+});
 
 let level = 1;
 let lastScenarioId = null;
