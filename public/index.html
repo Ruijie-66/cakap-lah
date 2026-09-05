@@ -2,9 +2,265 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>CAKAP LAH!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CAKAP LAH! — audio harness</title>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <h1>CAKAP LAH!</h1>
+  <div class="wrap">
+    <header>
+      <h1>CAKAP <span class="lah">LAH!</span></h1>
+      <p class="tagline">Audio layer harness — speak, see your Bahasa Melayu transcript, hear a reply.</p>
+      <span class="badge" id="mockBadge" hidden>mock mode</span>
+    </header>
+
+    <section class="card">
+      <h2>1 · Speak</h2>
+      <div class="mic-row">
+        <button class="mic-btn" id="micBtn" type="button" aria-live="polite">RECORD</button>
+        <div class="mic-side">
+          <canvas id="viz" aria-hidden="true"></canvas>
+          <div class="meta">
+            <span id="hint">Mic not started yet</span>
+            <span class="timer" id="timer">0.0s</span>
+          </div>
+        </div>
+      </div>
+      <p class="prompt" id="prompt">Press record when you are ready.</p>
+      <div class="status" id="sttStatus" role="status"></div>
+      <div class="controls">
+        <button class="btn" id="retryBtn" type="button" hidden>Try again</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2 · Your transcript</h2>
+      <div class="transcript empty" id="transcript">Nothing yet — record something in Bahasa Melayu.</div>
+      <div class="stats" id="sttStats"></div>
+    </section>
+
+    <section class="card">
+      <h2>3 · Hear a reply</h2>
+      <div class="row">
+        <label class="field visually-hidden" for="ttsText">Reply text</label>
+        <input type="text" id="ttsText" value="Boleh, teh tarik satu. Nak tambah roti canai?" />
+      </div>
+      <div class="controls">
+        <label class="field visually-hidden" for="voice">Voice</label>
+        <select id="voice">
+          <option value="nur-b184422b">Nur — casual female</option>
+          <option value="paan-f695215e">Paan — upbeat male</option>
+          <option value="salina-d3e1a70d">Salina — narrator</option>
+        </select>
+        <button class="btn primary" id="speakBtn" type="button">Speak it</button>
+        <button class="btn" id="replyToMeBtn" type="button" disabled>Speak my transcript</button>
+        <button class="btn" id="replayBtn" type="button" disabled>Replay</button>
+      </div>
+      <div class="status" id="ttsStatus" role="status"></div>
+    </section>
+
+    <footer>
+      Audio and transcripts live for this session only — nothing is stored, no analytics.
+      <br />Add <code>?mock=1</code> for the mock adapter, <code>?fail=stt</code> or <code>?fail=tts</code> to test error paths.
+    </footer>
+  </div>
+
+  <script type="module">
+    // Thin page: all the real logic lives in the modules, because these screens
+    // get replaced by the actual game UI in a later task.
+    import * as api from '/js/api.js';
+    import { createRecorder, isRecordingSupported, MAX_RECORDING_MS } from '/js/audio/recorder.js';
+    import { createVisualiser } from '/js/audio/visualiser.js';
+    import { createPlayer } from '/js/audio/player.js';
+
+    const $ = (id) => document.getElementById(id);
+    const micBtn = $('micBtn');
+    const timerEl = $('timer');
+    const hintEl = $('hint');
+    const promptEl = $('prompt');
+    const sttStatus = $('sttStatus');
+    const ttsStatus = $('ttsStatus');
+    const transcriptEl = $('transcript');
+    const sttStats = $('sttStats');
+    const retryBtn = $('retryBtn');
+    const speakBtn = $('speakBtn');
+    const replayBtn = $('replayBtn');
+    const replyToMeBtn = $('replyToMeBtn');
+
+    if (api.isMockMode()) $('mockBadge').hidden = false;
+
+    const visualiser = createVisualiser($('viz'));
+    visualiser.clear();
+
+    const player = createPlayer({
+      onPlay: () => setStatus(ttsStatus, 'Playing…', 'busy'),
+    });
+
+    let busy = false;
+    let lastTranscript = '';
+
+    function setStatus(el, text, kind = '') {
+      el.className = 'status' + (kind === 'error' ? ' error' : kind === 'ok' ? ' ok' : '');
+      el.innerHTML = '';
+      if (kind === 'busy') {
+        const s = document.createElement('span');
+        s.className = 'spinner';
+        el.appendChild(s);
+      }
+      const t = document.createElement('span');
+      // A processing indicator that never looks frozen: animated ellipsis.
+      if (kind === 'busy') t.className = 'dots';
+      t.textContent = text;
+      el.appendChild(t);
+    }
+
+    function setTimer(ms) {
+      timerEl.textContent = (ms / 1000).toFixed(1) + 's';
+      timerEl.classList.toggle('near-cap', ms > MAX_RECORDING_MS - 5000);
+    }
+
+    const recorder = createRecorder({
+      onTick: setTimer,
+      onAutoStop: () => {
+        // Hard cap reached: submit what was captured rather than dropping it.
+        promptEl.textContent = `Time is up (${MAX_RECORDING_MS / 1000}s) — sending what you said…`;
+        if (!busy) finishRecording();
+      },
+      onError: (err) => setStatus(sttStatus, err.message, 'error'),
+    });
+
+    if (!isRecordingSupported()) {
+      micBtn.disabled = true;
+      setStatus(sttStatus, 'This browser cannot record audio. Please use a recent Chrome, Edge, Firefox or Safari.', 'error');
+    }
+
+    micBtn.addEventListener('click', async () => {
+      if (busy) return;
+      if (recorder.isRecording()) { await finishRecording(); return; }
+      await beginRecording();
+    });
+
+    retryBtn.addEventListener('click', () => {
+      retryBtn.hidden = true;
+      setStatus(sttStatus, '');
+      beginRecording();
+    });
+
+    async function beginRecording() {
+      setStatus(sttStatus, '');
+      retryBtn.hidden = true;
+      try {
+        const { analyser } = await recorder.arm();
+        hintEl.textContent = 'Mic live';
+        visualiser.start(analyser);
+        await recorder.start();
+        micBtn.textContent = 'STOP';
+        micBtn.classList.add('recording');
+        promptEl.textContent = 'Cakap sekarang…';
+        promptEl.classList.add('live');
+        setTimer(0);
+      } catch (err) {
+        visualiser.stop();
+        micBtn.textContent = 'RECORD';
+        micBtn.classList.remove('recording');
+        promptEl.classList.remove('live');
+        promptEl.textContent = 'Press record when you are ready.';
+        setStatus(sttStatus, err.message || 'The microphone could not be started.', 'error');
+        retryBtn.hidden = false;
+      }
+    }
+
+    async function finishRecording() {
+      busy = true;
+      micBtn.disabled = true;
+      micBtn.textContent = 'RECORD';
+      micBtn.classList.remove('recording');
+      promptEl.classList.remove('live');
+      promptEl.textContent = 'Got it.';
+
+      let recording;
+      try {
+        recording = await recorder.stop();
+      } catch (err) {
+        visualiser.stop();
+        setStatus(sttStatus, err.message, 'error');
+        retryBtn.hidden = false;
+        busy = false; micBtn.disabled = false;
+        return;
+      }
+      visualiser.stop();
+      setTimer(recording.durationMs);
+
+      const kb = (recording.blob.size / 1024).toFixed(1);
+      setStatus(sttStatus, `Transcribing ${kb} KB of ${recording.mimeType}`, 'busy');
+
+      try {
+        const t0 = performance.now();
+        const result = await api.stt(recording.blob, recording.mimeType);
+        const roundTrip = Math.round(performance.now() - t0);
+        lastTranscript = result.text || '';
+        if (lastTranscript) {
+          transcriptEl.textContent = lastTranscript;
+          transcriptEl.classList.remove('empty');
+          setStatus(sttStatus, 'Transcribed.', 'ok');
+        } else {
+          transcriptEl.textContent = 'Nothing was heard. Speak a little louder and closer to the mic.';
+          transcriptEl.classList.add('empty');
+          setStatus(sttStatus, 'No speech detected.', 'error');
+          retryBtn.hidden = false;
+        }
+        sttStats.textContent =
+          `confidence ${result.confidence ?? '—'} · audio ${result.durationS != null ? result.durationS.toFixed(1) + 's' : '—'}` +
+          ` · server ${result.latencyMs ?? '—'}ms · round-trip ${roundTrip}ms · upload ${kb} KB (${recording.mimeType})`;
+        replyToMeBtn.disabled = !lastTranscript;
+      } catch (err) {
+        setStatus(sttStatus, err.message, 'error');
+        retryBtn.hidden = false;
+      } finally {
+        busy = false;
+        micBtn.disabled = false;
+      }
+    }
+
+    async function speak(text) {
+      if (!text || !text.trim()) {
+        setStatus(ttsStatus, 'Type something for the voice to say.', 'error');
+        return;
+      }
+      speakBtn.disabled = true;
+      replyToMeBtn.disabled = true;
+      setStatus(ttsStatus, 'Generating the voice', 'busy');
+      try {
+        const clip = await api.tts({ text, voiceId: $('voice').value, speed: 1.0 });
+        setStatus(ttsStatus, `Playing (${clip.durationS ?? '—'}s, server ${clip.latencyMs ?? '—'}ms)`, 'busy');
+        const played = await player.play(clip);
+        replayBtn.disabled = !player.hasClip();
+        if (played.ok) {
+          setStatus(ttsStatus, 'Done.', 'ok');
+        } else {
+          // Never a dead end — the text is already on screen.
+          setStatus(ttsStatus, `${played.reason} You can still read the line above.`, 'error');
+        }
+      } catch (err) {
+        setStatus(ttsStatus, `${err.message} (Showing the text instead.)`, 'error');
+      } finally {
+        speakBtn.disabled = false;
+        replyToMeBtn.disabled = !lastTranscript;
+      }
+    }
+
+    speakBtn.addEventListener('click', () => speak($('ttsText').value));
+    replyToMeBtn.addEventListener('click', () => speak(lastTranscript));
+    replayBtn.addEventListener('click', async () => {
+      const r = await player.replay();
+      if (!r.ok) setStatus(ttsStatus, r.reason, 'error');
+    });
+
+    window.addEventListener('pagehide', () => {
+      recorder.dispose();
+      player.dispose();
+      visualiser.destroy();
+    });
+  </script>
 </body>
 </html>
