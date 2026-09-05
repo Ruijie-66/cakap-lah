@@ -14,6 +14,14 @@
 /** Hard cap: a turn is never longer than this; we auto-stop and still submit. */
 export const MAX_RECORDING_MS = 20000;
 
+/**
+ * How long stop() will wait for the MediaRecorder's 'stop' event after the 20 s
+ * cap has already called the native stop(). Generous next to the 250 ms
+ * timeslice; it exists only so a browser that never fires the event cannot hang
+ * the turn — on expiry we resolve with whatever chunks we have.
+ */
+export const STOP_EVENT_TIMEOUT_MS = 1500;
+
 /** Preference order for the recording container/codec. */
 const MIME_CANDIDATES = [
   'audio/webm;codecs=opus',
@@ -144,6 +152,19 @@ export function createRecorder(options = {}) {
   let capTimer = null;
   let tickTimer = null;
   let autoStopped = false;
+  /** Set once the current recorder has delivered its 'stop' event — which is
+   *  also the moment its last buffered `dataavailable` chunk has landed. */
+  let stopEventFired = false;
+  /** Callbacks waiting for that event (at most one: the pending stop()). */
+  let stopWaiters = [];
+
+  function flushStopWaiters() {
+    const waiters = stopWaiters;
+    stopWaiters = [];
+    for (const w of waiters) {
+      try { w(); } catch { /* a waiter must never break the others */ }
+    }
+  }
 
   function clearTimers() {
     if (capTimer) { clearTimeout(capTimer); capTimer = null; }
@@ -215,6 +236,8 @@ export function createRecorder(options = {}) {
 
     chunks = [];
     autoStopped = false;
+    stopEventFired = false;
+    stopWaiters = [];
     mimeType = pickMimeType();
 
     try {
@@ -237,6 +260,13 @@ export function createRecorder(options = {}) {
     recorder.addEventListener('dataavailable', (ev) => {
       if (ev.data && ev.data.size > 0) chunks.push(ev.data);
     });
+    // The 'stop' event fires AFTER the final buffered `dataavailable`. Watching
+    // it here — not only in stop() — is what lets the 20 s auto-stop path wait
+    // for the tail chunk instead of building the Blob without it.
+    recorder.addEventListener('stop', () => {
+      stopEventFired = true;
+      flushStopWaiters();
+    }, { once: true });
     recorder.addEventListener('error', (ev) => {
       const e = new RecorderError(
         'Recording stopped unexpectedly. Please try again.',
@@ -293,7 +323,10 @@ export function createRecorder(options = {}) {
         return;
       }
 
+      let settled = false;
       const finish = () => {
+        if (settled) return;
+        settled = true;
         clearTimers();
         recording = false;
         stoppedAt = stoppedAt || performance.now();
@@ -302,13 +335,31 @@ export function createRecorder(options = {}) {
         const durationMs = Math.max(0, Math.round(stoppedAt - startedAt));
         const rec = recorder;
         recorder = null;
-        rec.onstop = null;
+        if (rec) rec.onstop = null;
         resolve({ blob, mimeType: blob.type || type, durationMs, autoStopped });
       };
 
       if (recorder.state === 'inactive') {
-        // Cap already stopped it; chunks are already flushed.
-        finish();
+        // The 20 s cap already called the native stop(). `state` flips to
+        // 'inactive' SYNCHRONOUSLY, but the last buffered chunk (up to one
+        // 250 ms timeslice of audio) is delivered afterwards, on the task
+        // queue. Building the Blob right here would silently truncate the tail
+        // — so wait for the 'stop' event, exactly as the manual path does.
+        if (stopEventFired) {
+          finish();
+          return;
+        }
+        // Timeout guard: a browser that never fires 'stop' must not hang the
+        // turn. On expiry we submit whatever was captured — the cap's binding
+        // requirement is that it auto-stops AND still submits.
+        const guard = setTimeout(() => {
+          console.warn('[recorder] no MediaRecorder "stop" event after the cap; submitting what was captured.');
+          finish();
+        }, STOP_EVENT_TIMEOUT_MS);
+        stopWaiters.push(() => {
+          clearTimeout(guard);
+          finish();
+        });
         return;
       }
 
@@ -334,6 +385,9 @@ export function createRecorder(options = {}) {
       try { recorder.stop(); } catch { /* already gone */ }
     }
     recorder = null;
+    // Release anyone awaiting the 'stop' event; they resolve with what exists
+    // rather than hanging on a recorder that has been thrown away.
+    flushStopWaiters();
     chunks = [];
   }
 
