@@ -56,8 +56,12 @@ and `?fail=json` — useful for demonstrating the error handling without waiting
 actually break.
 
 ```bash
-npm test          # 70 tests, no API keys required
+npm test          # 70 tests: 68 pass, 2 skipped, no API keys required
 ```
+
+The two skipped tests assert that the evaluator falls back deterministically when **no** LLM key is
+configured; they self-skip when a key is present in `.env`. Run `OPENAI_API_KEY= npm test` to see
+all 70 run and pass.
 
 ---
 

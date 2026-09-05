@@ -290,6 +290,12 @@ export function createUI() {
       // The recording state is the loudest thing in the app: the dock, the
       // visualiser frame and the REC badge all key off this one attribute.
       document.body.dataset.mic = mode;
+      // Replay and "Dengar coach" push TTS out of the speakers. With the mic
+      // open that is the NPC's voice bleeding into the player's answer —
+      // echoCancellation usually saves it on a laptop, but not at demo volume
+      // through external speakers. Both are off-limits while recording.
+      el.replayBtn.disabled = mode === 'recording';
+      el.coachBtn.disabled = mode === 'recording';
       if (mode !== 'recording') {
         publishMicLevel(0);
         // A stale "21.0s" sitting under an idle mic reads like a bug.

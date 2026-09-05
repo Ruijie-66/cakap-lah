@@ -373,13 +373,6 @@ export function createEngine({ api, player, emit }) {
       emit('ready-to-record', { step, reason: 'after-error' });
     },
 
-    /** Re-speak the current step prompt (used by the "no dead end" recovery). */
-    async repromptCurrentStep() {
-      if (!session) return;
-      const token = runToken;
-      await enterStep(token, session.stepId);
-    },
-
     /** Abandon the mission (home button). Any in-flight sequence is dropped. */
     abort() {
       runToken += 1;
