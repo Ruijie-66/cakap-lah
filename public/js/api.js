@@ -207,22 +207,22 @@ async function json(path, options = {}) {
   return res.json();
 }
 
-// --- Routes owned by the game-content/server task. These wrappers exist so
-// --- the game engine has a single import surface; they are NOT yet verified
-// --- against a live implementation.
+// --- Routes owned by the game-content/server task. These wrappers give the
+// --- game engine a single import surface.
 
-/** @returns {Promise<any>} list of available scenarios */
+/** @returns {Promise<{scenarios: Array<object>}>} list of available scenarios */
 export function getScenarios(options = {}) {
   return json('/api/scenarios', { label: 'Loading scenarios', ...options });
 }
 
 /**
  * @param {string} id scenario id, e.g. 'mamak_01'
- * @param {string} [level] difficulty level
+ * @param {1|2|3} [level] difficulty level — the server requires 1, 2 or 3
+ * @returns {Promise<object>} the scenario with its steps for that level
  */
 export function getScenario(id, level, options = {}) {
   return json(`/api/scenarios/${encodeURIComponent(id)}`, {
-    query: level ? { level } : undefined,
+    query: level != null ? { level } : undefined,
     label: 'Loading the scenario',
     ...options,
   });
