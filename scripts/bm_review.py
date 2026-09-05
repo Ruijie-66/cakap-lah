@@ -85,13 +85,25 @@ for path in sorted(SRC.glob("*.json"), key=lambda p: json.load(open(p))["order"]
             "",
         ]
 
+    # `complete` is one block, or a list of level-gated variants when the
+    # closing speaker differs by level (mall_01 hands over to a second
+    # character only at level 3).
+    closings = d["complete"]
+    if not isinstance(closings, list):
+        closings = [closings]
+    for c in closings:
+        who = c.get("npc_name", d["npc_name"])
+        levels = c.get("levels")
+        scope = "  ·  levels " + "/".join(str(x) for x in levels) if levels else ""
+        lines += [
+            f"### Closing line{scope}  ·  {who} — {SPOKEN}",
+            "",
+            "> " + c["npc_line"],
+            "",
+            "- [ ] Approved  ·  Correction: `________________________________`",
+            "",
+        ]
     lines += [
-        f"### Closing line — {SPOKEN}",
-        "",
-        "> " + d["complete"]["npc_line"],
-        "",
-        "- [ ] Approved  ·  Correction: `________________________________`",
-        "",
         "---",
         "",
     ]

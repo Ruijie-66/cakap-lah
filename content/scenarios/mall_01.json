@@ -112,8 +112,20 @@
     }
   ],
 
-  "complete": {
-    "npc_line": "Terima kasih ya dik! Baik betul orang muda zaman sekarang.",
-    "voice_id": "nur-b184422b"
-  }
+  "complete": [
+    {
+      "levels": [1, 2],
+      "npc_name": "Abang Guard",
+      "voice_id": "ali-13002bfa",
+      "portrait": "abang-guard",
+      "npc_line": "Sama-sama! Kalau sesat lagi, cari abang tau."
+    },
+    {
+      "levels": [3],
+      "npc_name": "Makcik",
+      "voice_id": "nur-b184422b",
+      "portrait": "makcik",
+      "npc_line": "Terima kasih ya dik! Baik betul orang muda zaman sekarang."
+    }
+  ]
 }

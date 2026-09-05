@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { includedSteps, levelConfig, resolveForward, COMPLETE } from './branching.js';
+import { includedSteps, isStepIncluded, levelConfig, resolveForward, COMPLETE } from './branching.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCENARIO_DIR = path.join(__dirname, '..', '..', 'content', 'scenarios');
@@ -65,6 +65,27 @@ export function listScenarios() {
 }
 
 /**
+ * Resolve the closing line for one level.
+ *
+ * `complete` is normally a single object. When the last step differs by level
+ * — mall_01 hands the conversation to a second character only at level 3 — it
+ * may instead be an ARRAY of variants, each gated by `levels` exactly like a
+ * step. Without this the level-3 line ("Terima kasih ya dik!", Makcik) played
+ * at level 1 in Abang Guard's voice, thanking the player for something they
+ * never did. The first variant matching the level wins; an unmatched level
+ * falls back to the last variant rather than ending the mission in silence.
+ *
+ * @param {object} scenario
+ * @param {number} level
+ * @returns {object|undefined} the single closing block for this level
+ */
+export function completeFor(scenario, level) {
+  const complete = scenario?.complete;
+  if (!Array.isArray(complete)) return complete;
+  return complete.find((v) => isStepIncluded(v, level)) || complete[complete.length - 1];
+}
+
+/**
  * Browser-safe projection of a scenario at one level:
  *  - only the steps included at that level
  *  - the level's speed / hint / allowed_code_switch resolved
@@ -105,7 +126,7 @@ export function publicScenario(scenario, level) {
     scene: scenario.scene,
     portrait: scenario.portrait,
     intro: scenario.intro,
-    complete: scenario.complete,
+    complete: completeFor(scenario, cfg.level),
     level: cfg.level,
     speed: cfg.speed,
     hint: cfg.hint,

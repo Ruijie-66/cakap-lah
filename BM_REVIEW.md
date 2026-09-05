@@ -113,7 +113,7 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 
 - Would a real person say something else here? `________________________________`
 
-### Closing line — 🔊 spoken aloud by TTS
+### Closing line  ·  Abang Mamak — 🔊 spoken aloud by TTS
 
 > Aduh, salah meja tadi! Maaf ya boss. Datang lagi tau.
 
@@ -220,7 +220,13 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 
 - Would a real person say something else here? `________________________________`
 
-### Closing line — 🔊 spoken aloud by TTS
+### Closing line  ·  levels 1/2  ·  Abang Guard — 🔊 spoken aloud by TTS
+
+> Sama-sama! Kalau sesat lagi, cari abang tau.
+
+- [ ] Approved  ·  Correction: `________________________________`
+
+### Closing line  ·  levels 3  ·  Makcik — 🔊 spoken aloud by TTS
 
 > Terima kasih ya dik! Baik betul orang muda zaman sekarang.
 
@@ -327,7 +333,7 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 
 - Would a real person say something else here? `________________________________`
 
-### Closing line — 🔊 spoken aloud by TTS
+### Closing line  ·  Kak Ana — 🔊 spoken aloud by TTS
 
 > Okay, saya pegang janji ni tau. Jangan esok pula.
 
