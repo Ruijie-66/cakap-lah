@@ -355,7 +355,14 @@ body.game {
 .scene[data-scene="office"] .scene-art { background: linear-gradient(160deg, #33224e, #0d0917 70%); }
 .scene[data-scene] .scene-art.has-art { opacity: 0.45; }
 
-.scene-bar, .stage, .narrator { position: relative; z-index: 1; }
+.scene-bar, .stage, .narrator, .scene-context { position: relative; z-index: 1; }
+.scene-context {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 0 16px 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
 .scene-bar {
   display: flex;
   align-items: center;
@@ -523,7 +530,7 @@ body.game {
   color: var(--muted);
   margin-bottom: 8px;
 }
-.transcript-panel .said { margin: 0; font-size: 18px; }
+.transcript-panel .said { margin: 0 0 8px; font-size: 18px; }
 
 .result-panel { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .score-block { text-align: center; min-width: 110px; }
@@ -541,8 +548,7 @@ body.game {
 .result-panel[data-band="almost"] .score, .result-panel[data-band="almost"] .band { color: var(--warn); }
 .result-panel[data-band="retry"] .score, .result-panel[data-band="retry"] .band { color: var(--danger); }
 .coach { flex: 1 1 260px; min-width: 0; }
-.coach-line { margin: 0 0 4px; font-size: 16px; }
-.coach-sub { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+.coach-line { margin: 0 0 8px; font-size: 16px; }
 .subscores { display: flex; gap: 6px; flex-wrap: wrap; }
 .sub-chip {
   display: inline-flex; gap: 6px; align-items: baseline;

@@ -9,8 +9,7 @@ import { createRecorder, isRecordingSupported, MAX_RECORDING_MS } from '/js/audi
 import { createVisualiser } from '/js/audio/visualiser.js';
 import { createPlayer } from '/js/audio/player.js';
 import { createEngine, NO_INPUT_MESSAGE } from '/js/game/engine.js';
-import { COACH_VOICE } from '/js/game/state.js';
-import { createUI, LEVEL_NAMES } from '/js/ui/screens.js';
+import { createUI } from '/js/ui/screens.js';
 
 const ui = createUI();
 const player = createPlayer();
@@ -23,6 +22,12 @@ let npcRestState = 'idle';
 let lastSummary = null;
 let armTimer = 0;
 let errorAction = null; // what the error panel's "Cuba lagi" should do
+let submitting = false; // guards the STOP-click / auto-stop race
+// True from the instant the player asks for the mic until the clip is captured.
+// `recorder.isRecording()` only flips true several awaits into start(), and the
+// cancelled speak() re-emits ready-to-record within a microtask of the stop —
+// so the flag, not the recorder, is what makes armMic a no-op on barge-in.
+let micHeld = false;
 
 ui.setMockBadge(api.isMockMode());
 ui.setLevel(level);
@@ -35,6 +40,8 @@ function handleEvent(type, payload = {}) {
     case 'mission-loading':
       ui.showScreen('play');
       ui.clearTurnPanels();
+      // The previous mission's scene and portrait must not linger here.
+      ui.resetStage();
       ui.setNarrator('');
       ui.setNpcLine('Memuatkan misi…');
       ui.setPhase('Memuatkan…');
@@ -48,6 +55,8 @@ function handleEvent(type, payload = {}) {
 
     case 'step':
       cancelArm();
+      // A new step: the previous turn's transcript can no longer be redone.
+      ui.setTranscriptRetry('off');
       // The previous turn's score and transcript stay up while the next prompt
       // plays — they only clear when the player starts speaking again.
       ui.hideError();
@@ -99,6 +108,7 @@ function handleEvent(type, payload = {}) {
       break;
 
     case 'processing':
+      ui.setTranscriptRetry('busy');
       ui.setPipeline(payload.stage === 'summary' ? null : payload.stage);
       ui.setMic('busy', payload.stage === 'stt' ? 'Menghantar suara…' : 'Memproses…');
       ui.setPhase(
@@ -121,6 +131,13 @@ function handleEvent(type, payload = {}) {
 
     case 'turn-result':
       ui.showTurnResult(payload.evaluation);
+      // Misheard? The learner can redo this same step from here, free.
+      ui.setTranscriptRetry('on');
+      break;
+
+    case 'step-redo':
+      ui.clearTurnResult();
+      ui.showNotice('Cuba lagi giliran ini — tiada penalti.', 'info');
       break;
 
     case 'retry-step':
@@ -138,6 +155,7 @@ function handleEvent(type, payload = {}) {
       break;
 
     case 'mission-end':
+      ui.setTranscriptRetry('off');
       lastSummary = payload.summary;
       ui.renderEnd(payload.summary, payload.session);
       ui.showScreen('end');
@@ -177,6 +195,10 @@ function cancelArm() {
 /** Auto-arm shortly after the audio ends; a manual press also works. */
 function armMic(reason) {
   cancelArm();
+  // Barge-in: the cancelled `speak` still emits ready-to-record, and the player
+  // is already recording. Re-arming here would overwrite the phase text and
+  // leave the button reading CAKAP while the mic is live.
+  if (micHeld || recorder?.isRecording()) return;
   if (!isRecordingSupported()) {
     handleEvent('error', {
       message: 'This browser cannot record audio. Try Chrome or Edge on a desktop, over https or localhost.',
@@ -186,13 +208,16 @@ function armMic(reason) {
   }
   ui.setMic('ready', 'Bersedia… mic akan buka');
   ui.setPhase(reason === 'retry' ? 'Cuba sekali lagi — cakap bila sedia.' : 'Giliran anda.');
+  ui.setTranscriptRetry(ui.el.transcriptPanel.hidden ? 'off' : 'on');
   armTimer = setTimeout(() => startRecording(), 350);
 }
 
 async function startRecording() {
   cancelArm();
   const rec = ensureRecorder();
-  if (rec.isRecording()) return;
+  if (micHeld || rec.isRecording()) return;
+  micHeld = true;
+  ui.setTranscriptRetry('off');
   engine.stopAudio();
   ui.hideError();
   ui.clearTurnResult();
@@ -202,6 +227,7 @@ async function startRecording() {
   try {
     await rec.start();
   } catch (err) {
+    micHeld = false;
     ui.setMic('ready', 'Tekan untuk cuba lagi');
     handleEvent('error', { message: err?.message || 'The microphone could not be started.', kind: 'mic' });
     return;
@@ -209,6 +235,7 @@ async function startRecording() {
   const analyser = rec.getAnalyser();
   if (analyser) visualiser.start(analyser);
   ui.setTimer(0);
+  submitting = false;
   ui.setMic('recording');
   ui.setPhase('Cakap sekarang… (maksimum 20 saat)');
 }
@@ -216,21 +243,29 @@ async function startRecording() {
 async function stopAndSubmit() {
   const rec = recorder;
   if (!rec) return;
+  // The 20 s auto-stop and a STOP click can land together; the disabled button
+  // makes the window small, not zero.
+  if (submitting) return;
+  submitting = true;
   visualiser.stop();
   ui.setMic('busy', 'Menghantar…');
   let captured;
   try {
     captured = await rec.stop();
   } catch (err) {
+    submitting = false;
+    micHeld = false;
     ui.setMic('ready', 'Tekan untuk cuba lagi');
     handleEvent('error', { message: err?.message || 'Nothing was recorded. Try again.', kind: 'mic' });
     return;
   }
+  micHeld = false;
   // A blip of a recording (fumbled button, mic opened and closed) is not a
   // system error and must not read like one: same friendly path as silence.
   if (!captured.blob || captured.blob.size < 1200 || captured.durationMs < 400) {
     ui.showTranscript('');
     handleEvent('no-input', { message: NO_INPUT_MESSAGE });
+    submitting = false;
     armMic('no-input');
     return;
   }
@@ -239,6 +274,8 @@ async function stopAndSubmit() {
 
 function stopRecordingSilently() {
   visualiser.stop();
+  submitting = false;
+  micHeld = false;
   if (recorder?.isRecording()) recorder.cancel();
 }
 
@@ -255,6 +292,16 @@ ui.el.levelBtns.forEach((btn) =>
     ui.setLevel(level);
   }),
 );
+
+// Retry beside the transcript: re-record the SAME step. It is not a scored
+// retry — retry_count is only touched by the server's branch decision, and this
+// path never reaches applyEvaluation, so the attempt costs the learner nothing.
+ui.el.transcriptRetryBtn.addEventListener('click', () => {
+  if (micHeld || recorder?.isRecording()) return;
+  ui.setTranscriptRetry('off');
+  if (!engine.retryCurrentStep()) return;
+  ui.setPhase('Cuba sekali lagi — tiada penalti.');
+});
 
 ui.el.replayBtn.addEventListener('click', () => engine.replayLine());
 
@@ -312,19 +359,3 @@ async function loadHome() {
 }
 
 loadHome();
-
-// Handy for verification from the console; harmless in production.
-window.CAKAP = {
-  engine,
-  ui,
-  api,
-  startMission,
-  setLevel: (n) => {
-    level = Number(n);
-    ui.setLevel(level);
-  },
-  getLevel: () => level,
-  levelName: (n) => LEVEL_NAMES[n],
-  coachVoice: COACH_VOICE,
-  recorder: () => recorder,
-};

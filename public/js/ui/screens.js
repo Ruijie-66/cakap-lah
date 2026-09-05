@@ -39,6 +39,7 @@ export function createUI() {
     scene: $('scene'),
     sceneArt: $('sceneArt'),
     playTitle: $('playTitle'),
+    playContext: $('playContext'),
     playLevel: $('playLevel'),
     stepDots: $('stepDots'),
     narratorBox: $('narratorBox'),
@@ -60,11 +61,11 @@ export function createUI() {
 
     transcriptPanel: $('transcriptPanel'),
     transcriptText: $('transcriptText'),
+    transcriptRetryBtn: $('transcriptRetryBtn'),
     resultPanel: $('resultPanel'),
     scoreNum: $('scoreNum'),
     bandLabel: $('bandLabel'),
     coachLine: $('coachLine'),
-    coachSub: $('coachSub'),
     coachBtn: $('coachBtn'),
     subScores: $('subScores'),
     noticePanel: $('noticePanel'),
@@ -87,6 +88,9 @@ export function createUI() {
   };
 
   let cancelCount = null;
+  // Art loads asynchronously; a stale probe must never paint over a newer
+  // speaker's portrait.
+  let speakerToken = 0;
 
   const ui = {
     el,
@@ -153,7 +157,7 @@ export function createUI() {
       el.levelBtns.forEach((b) => {
         const on = Number(b.dataset.level) === Number(level);
         b.classList.toggle('is-on', on);
-        b.setAttribute('aria-checked', String(on));
+        b.setAttribute('aria-pressed', String(on));
       });
     },
 
@@ -167,6 +171,32 @@ export function createUI() {
       });
       el.playTitle.textContent = scenario.title;
       el.playLevel.textContent = `Tahap ${level} · ${LEVEL_NAMES[level] || ''}`;
+      el.playContext.hidden = !scenario.context;
+      el.playContext.textContent = scenario.context || '';
+    },
+
+    /**
+     * Blank the stage between missions: the previous mission's scene art and
+     * portrait must not sit there while the next one loads.
+     */
+    resetStage() {
+      speakerToken += 1;
+      el.scene.removeAttribute('data-scene');
+      el.sceneArt.style.backgroundImage = '';
+      el.sceneArt.classList.remove('has-art');
+      el.playTitle.textContent = '—';
+      el.playContext.hidden = true;
+      el.playContext.textContent = '';
+      el.stepDots.innerHTML = '';
+      el.npcName.textContent = '';
+      el.portrait.style.setProperty('--hue', '210');
+      el.portrait.dataset.state = 'idle';
+      el.portraitImg.hidden = true;
+      el.portraitImg.removeAttribute('src');
+      el.portraitFallback.hidden = false;
+      el.portraitFallback.textContent = '…';
+      el.taskHint.hidden = true;
+      el.taskHint.textContent = '';
     },
 
     setSteps(count, index) {
@@ -184,14 +214,20 @@ export function createUI() {
       el.npcName.textContent = speaker?.name || '';
       const key = speaker?.portrait || '';
       const face = PORTRAIT_FACE[key] || { glyph: '🧑', hue: 200 };
+      const token = ++speakerToken;
       el.portrait.style.setProperty('--hue', String(face.hue));
       el.portraitFallback.textContent = face.glyph;
+      // Emoji first, always. Real art replaces it — .portrait is a grid, so the
+      // fallback must go away or both would render side by side.
+      el.portraitFallback.hidden = false;
       el.portraitImg.hidden = true;
       el.portraitImg.removeAttribute('src');
       if (key) {
         loadArt(`/assets/npc/${key}.png`, (url) => {
+          if (token !== speakerToken) return; // a newer speaker won the race
           el.portraitImg.src = url;
           el.portraitImg.hidden = false;
+          el.portraitFallback.hidden = true;
         });
       }
     },
@@ -262,17 +298,37 @@ export function createUI() {
       el.transcriptText.textContent = '';
     },
 
+    /**
+     * The transcript panel's Retry control.
+     * @param {'on'|'busy'|'off'} state
+     */
+    setTranscriptRetry(state) {
+      el.transcriptRetryBtn.hidden = state === 'off';
+      el.transcriptRetryBtn.disabled = state !== 'on';
+    },
+
     clearTurnPanels() {
       el.transcriptPanel.hidden = true;
       el.resultPanel.hidden = true;
       el.noticePanel.hidden = true;
       el.errorPanel.hidden = true;
       el.transcriptText.textContent = '';
+      el.transcriptRetryBtn.hidden = true;
     },
 
     showTranscript(text) {
+      // Nothing heard: the "Tak dengar tadi" notice says it. An empty panel
+      // showing "—" beside it is just noise.
+      if (!text) {
+        el.transcriptPanel.hidden = true;
+        el.transcriptText.textContent = '';
+        el.transcriptRetryBtn.hidden = true;
+        return;
+      }
       el.transcriptPanel.hidden = false;
-      el.transcriptText.textContent = text ? `“${text}”` : '—';
+      el.transcriptText.textContent = `“${text}”`;
+      el.transcriptRetryBtn.hidden = false;
+      el.transcriptRetryBtn.disabled = true; // enabled once the mic is free
     },
 
     /** Turn score counting up + band label + one coaching line. */
@@ -295,10 +351,9 @@ export function createUI() {
         evaluation.result === 'success'
           ? evaluation.what_worked || bandFlavour(band.band)
           : evaluation.improvement || evaluation.what_worked || bandFlavour(band.band);
+      // ONE coaching line — the band flavour is only a stand-in when the
+      // evaluator gave us nothing of its own.
       el.coachLine.textContent = coaching;
-      const sub = bandFlavour(band.band);
-      el.coachSub.hidden = !sub;
-      el.coachSub.textContent = sub;
       el.coachBtn.dataset.text = coaching || '';
 
       el.subScores.innerHTML = '';

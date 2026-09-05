@@ -17,15 +17,15 @@
       <span class="badge" id="mockBadge" hidden>mock mode</span>
     </header>
 
-    <div class="level-picker" role="radiogroup" aria-label="Pilih tahap">
+    <div class="level-picker" role="group" aria-label="Pilih tahap">
       <span class="level-label">Tahap</span>
-      <button class="level-btn is-on" type="button" role="radio" aria-checked="true" data-level="1">
+      <button class="level-btn is-on" type="button" aria-pressed="true" data-level="1">
         <b>1</b><span>Santai</span><em>English hint</em>
       </button>
-      <button class="level-btn" type="button" role="radio" aria-checked="false" data-level="2">
+      <button class="level-btn" type="button" aria-pressed="false" data-level="2">
         <b>2</b><span>Biasa</span><em>Hint dalam BM</em>
       </button>
-      <button class="level-btn" type="button" role="radio" aria-checked="false" data-level="3">
+      <button class="level-btn" type="button" aria-pressed="false" data-level="3">
         <b>3</b><span>Power</span><em>No hint · extra twist</em>
       </button>
     </div>
@@ -51,6 +51,8 @@
       <div class="scene-title"><b id="playTitle">—</b><span class="pill" id="playLevel">Tahap 1</span></div>
       <div class="step-dots" id="stepDots" aria-label="Kemajuan"></div>
     </div>
+
+    <p class="scene-context" id="playContext" hidden></p>
 
     <div class="narrator" id="narratorBox" hidden><span class="who">Narrator</span><p id="narratorText"></p></div>
 
@@ -96,6 +98,9 @@
     <div class="panel transcript-panel" id="transcriptPanel" hidden>
       <span class="panel-label">Kami dengar</span>
       <p class="said" id="transcriptText"></p>
+      <button class="ghost-btn small" id="transcriptRetryBtn" type="button" hidden disabled>
+        ↺ Cuba lagi (tiada penalti)
+      </button>
     </div>
 
     <div class="panel result-panel" id="resultPanel" hidden>
@@ -105,7 +110,6 @@
       </div>
       <div class="coach">
         <p class="coach-line" id="coachLine"></p>
-        <p class="coach-sub" id="coachSub" hidden></p>
         <button class="ghost-btn small" id="coachBtn" type="button">🔊 Coach</button>
       </div>
       <div class="subscores" id="subScores"></div>

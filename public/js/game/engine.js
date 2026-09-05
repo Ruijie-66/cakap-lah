@@ -25,6 +25,8 @@ import {
   NARRATOR_VOICE,
   COACH_VOICE,
   applyEvaluation,
+  closingSpeakerFor,
+  dropLastTurn,
   createSession,
   hintFor,
   recordTurn,
@@ -49,6 +51,12 @@ export function createEngine({ api, player, emit }) {
   let runToken = 0;
   let busy = false;
   let lastLine = null; // { text, voiceId, speed, who } — for the replay button
+  /** set by stopAudio(): the player cut the voice off on purpose (barge-in) */
+  let interrupted = false;
+  /** the speaker of the last NPC step — the closing line falls back to them */
+  let lastStepSpeaker = null;
+  /** a turn is logged but its branch has not been applied yet — undoable */
+  let uncommittedTurn = null;
 
   const alive = (token) => token === runToken && session !== null;
 
@@ -56,18 +64,27 @@ export function createEngine({ api, player, emit }) {
   async function speak(token, { text, voiceId, speed, who }) {
     if (!text || !alive(token)) return { ok: false, reason: 'skipped' };
     lastLine = { text, voiceId, speed, who };
+    interrupted = false;
     emit('speaking', { who, text });
     let result = { ok: false, reason: 'unknown' };
     try {
       const clip = await api.tts({ text, voiceId, speed });
       if (!alive(token)) return { ok: false, reason: 'cancelled' };
+      // Barged in while the voice was still being fetched: do not start it.
+      if (interrupted) {
+        emit('speak-end', { who, text, ok: false, interrupted: true });
+        return { ok: false, reason: 'Playback stopped.', interrupted: true };
+      }
       result = await player.play(clip);
     } catch (err) {
       result = { ok: false, reason: err?.message || 'The voice could not be played.' };
     }
     if (!alive(token)) return { ok: false, reason: 'cancelled' };
-    if (!result.ok) emit('voice-warning', { message: result.reason, text, who });
-    emit('speak-end', { who, text, ok: result.ok });
+    // A stop we asked for is not a failure: the player pressed the mic to cut
+    // the NPC off, exactly as the button invited them to.
+    if (interrupted) result = { ...result, interrupted: true };
+    if (!result.ok && !result.interrupted) emit('voice-warning', { message: result.reason, text, who });
+    emit('speak-end', { who, text, ok: result.ok, interrupted: !!result.interrupted });
     return result;
   }
 
@@ -81,6 +98,7 @@ export function createEngine({ api, player, emit }) {
       return;
     }
     const speaker = speakerFor(scenario, step);
+    lastStepSpeaker = speaker;
     emit('step', {
       step,
       speaker,
@@ -115,15 +133,17 @@ export function createEngine({ api, player, emit }) {
   }
 
   /** Mission end: closing NPC line, then the summary screen. */
-  async function finish(token) {
+  async function finish(token, lastSpeaker = lastStepSpeaker) {
     const { scenario } = session;
     session.finished = true;
     const closing = scenario.complete;
     if (closing?.npc_line) {
-      emit('npc-line', { text: closing.npc_line, speaker: speakerFor(scenario, null), state: 'pleased' });
+      // ONE speaker drives both the voice and the portrait/name on screen.
+      const speaker = closingSpeakerFor(scenario, lastSpeaker);
+      emit('npc-line', { text: closing.npc_line, speaker, state: 'pleased' });
       await speak(token, {
         text: closing.npc_line,
-        voiceId: closing.voice_id || scenario.voice_id,
+        voiceId: speaker.voiceId,
         speed: scenario.speed,
         who: 'npc',
       });
@@ -199,6 +219,7 @@ export function createEngine({ api, player, emit }) {
 
     /** Stop any playback — used when the player presses record early. */
     stopAudio() {
+      interrupted = true;
       player.stop();
     },
 
@@ -274,6 +295,7 @@ export function createEngine({ api, player, emit }) {
 
       // --- 10. Log the turn (no_input never scores and never enters history)
       if (evaluation.result !== 'no_input') {
+        uncommittedTurn = step.id;
         recordTurn(session, {
           stepId: step.id,
           npc: step.tts_prompt,
@@ -300,10 +322,11 @@ export function createEngine({ api, player, emit }) {
 
       // --- 11. Branch. next_step_id is authoritative.
       const { isRetry, complete } = applyEvaluation(session, evaluation);
+      uncommittedTurn = null;
       busy = false;
 
       if (complete) {
-        await finish(token);
+        await finish(token, speaker);
         return;
       }
       if (isRetry) {
@@ -317,6 +340,29 @@ export function createEngine({ api, player, emit }) {
         return;
       }
       await enterStep(token, session.stepId);
+    },
+
+    /**
+     * The learner asks to redo the current step (transcript panel Retry).
+     * Anything still in flight is abandoned, the turn just logged is undone,
+     * and the SAME step is re-offered. retry_count is never touched: this path
+     * never reaches applyEvaluation.
+     */
+    retryCurrentStep() {
+      if (!session || session.finished) return false;
+      const step = stepById(session.scenario, session.stepId);
+      if (!step) return false;
+      runToken += 1; // any in-flight evaluate/speak drops out at its next check
+      if (uncommittedTurn) {
+        dropLastTurn(session, uncommittedTurn);
+        uncommittedTurn = null;
+      }
+      busy = false;
+      interrupted = true;
+      player.stop();
+      emit('step-redo', { step, retryCount: session.retryCount });
+      emit('ready-to-record', { step, reason: 'user-retry' });
+      return true;
     },
 
     /** After a system error: re-offer the same step with no penalty. */
@@ -340,6 +386,8 @@ export function createEngine({ api, player, emit }) {
       busy = false;
       session = null;
       lastLine = null;
+      lastStepSpeaker = null;
+      interrupted = true;
       player.stop();
       emit('aborted');
     },

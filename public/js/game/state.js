@@ -76,6 +76,36 @@ export function speakerFor(scenario, step) {
 }
 
 /**
+ * Who speaks (and is shown for) the mission's closing line.
+ *
+ * The `complete` block may name its own character, or only a voice. A voice on
+ * its own used to play under the scenario's default portrait/name — the makcik
+ * talking out of Abang Guard's face. Resolve ONE speaker and use it for both
+ * the audio and the screen:
+ *   1. an explicit character on the `complete` block, else
+ *   2. the step at this level whose voice matches `complete.voice_id`, else
+ *   3. whoever spoke last (the scenario default if we have nobody).
+ * @param {object} scenario
+ * @param {{name?: string, voiceId?: string, portrait?: string}} [lastSpeaker]
+ */
+export function closingSpeakerFor(scenario, lastSpeaker) {
+  const closing = scenario?.complete || {};
+  if (closing.npc_name || closing.portrait) {
+    return {
+      name: closing.npc_name || scenario.npc_name,
+      voiceId: closing.voice_id || scenario.voice_id,
+      portrait: closing.portrait || scenario.portrait,
+    };
+  }
+  if (closing.voice_id && closing.voice_id !== scenario.voice_id) {
+    const match = (scenario.steps || []).find((s) => s.voice_id === closing.voice_id);
+    if (match) return speakerFor(scenario, match);
+  }
+  if (lastSpeaker?.voiceId) return lastSpeaker;
+  return speakerFor(scenario, null);
+}
+
+/**
  * Append a completed turn. `evaluation` may be a no_input turn, in which case
  * no score is recorded anywhere (a system/silence turn never costs points).
  * @param {ReturnType<createSession>} session
@@ -100,6 +130,23 @@ export function recordTurn(session, { stepId, npc, player, npcName, evaluation }
     session.turnScores.push({ step_id: stepId, overall_score: evaluation.overall_score });
   }
   return session;
+}
+
+/**
+ * Undo the most recent recorded turn — used when the learner asks to redo a
+ * turn they can see was misheard, before the branch has been applied. The
+ * attempt must leave no trace: no history line, no score, no retry counted.
+ * @param {ReturnType<createSession>} session
+ * @param {string} stepId
+ */
+export function dropLastTurn(session, stepId) {
+  const last = session.turns[session.turns.length - 1];
+  if (!last || last.stepId !== stepId) return false;
+  session.turns.pop();
+  session.history.pop();
+  const lastScore = session.turnScores[session.turnScores.length - 1];
+  if (lastScore && lastScore.step_id === stepId) session.turnScores.pop();
+  return true;
 }
 
 /**
