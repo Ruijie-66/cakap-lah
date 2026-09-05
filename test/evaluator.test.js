@@ -14,6 +14,9 @@ import {
   SUMMARY_COACHING_LANGUAGE_RULE,
   withCoachingLanguage,
   isUsefulUpgrade,
+  filterUpgrades,
+  containsEnglish,
+  EVAL_TEMPERATURE,
 } from '../server/adapters/evaluator.js';
 import * as mock from '../server/adapters/mock.js';
 import { getScenario, publicScenario, ANSWER_KEY_FIELDS } from '../server/game/scenarios.js';
@@ -230,7 +233,19 @@ test('the coaching-language slot is spliced with the ENGLISH rule at L1', () => 
 test('npc_reply is pinned to Bahasa Melayu at every level in the turn prompt', () => {
   for (const level of [1, 2, 3]) {
     const p = withCoachingLanguage(TURN_SYSTEM_PROMPT, TURN_COACHING_LANGUAGE_RULE, level);
-    assert.ok(/`npc_reply` is ALWAYS Bahasa Melayu/.test(p), `L${level} pins npc_reply to BM`);
+    assert.ok(
+      /`npc_reply` IS WRITTEN ENTIRELY IN NATURAL MALAYSIAN BAHASA MELAYU/.test(p),
+      `L${level} pins npc_reply to BM`,
+    );
+    assert.ok(
+      /LEVEL 1, LEVEL 2 and LEVEL 3 alike/.test(p),
+      `L${level} says the BM rule applies at every level`,
+    );
+    assert.ok(/ENGLISH TAIL/.test(p), `L${level} names the observed English-tail failure`);
+    assert.ok(
+      /Two or more English words in a row is an English clause/.test(p),
+      `L${level} draws the borrowed-word line`,
+    );
   }
 });
 
@@ -273,4 +288,116 @@ test('validateSummaryOutput drops useless bm_upgrades pairs but keeps real ones'
 test('an empty bm_upgrades array is a valid answer', () => {
   const out = validateSummaryOutput({ ...GOOD_SUMMARY, bm_upgrades: [] });
   assert.deepEqual(out.bm_upgrades, []);
+});
+
+
+// --- D2: the four axes must be DEFINED, and defined as independent ----------
+
+test('the turn prompt defines each of the four axes separately', () => {
+  for (const axis of [
+    'intent_score',
+    'semantic_score',
+    'comprehensibility_score',
+    'naturalness_score',
+  ]) {
+    // each axis is named on its own numbered definition line
+    assert.match(TURN_SYSTEM_PROMPT, new RegExp('\\d\\. `' + axis + '` \u2014'), axis + ' defined');
+  }
+});
+
+test('the turn prompt states the wrong-but-fluent shape explicitly', () => {
+  assert.match(TURN_SYSTEM_PROMPT, /WRONG-BUT-FLUENT/);
+  assert.match(TURN_SYSTEM_PROMPT, /independent of whether the answer was on-task/);
+  assert.match(TURN_SYSTEM_PROMPT, /independent of task success/);
+  // and it must still forbid punishing casual register
+  assert.match(TURN_SYSTEM_PROMPT, /never penalise casual register/i);
+});
+
+// --- D3: grading is deterministic -------------------------------------------
+
+test('evaluation temperature is pinned to 0', () => {
+  assert.equal(EVAL_TEMPERATURE, 0);
+});
+
+// --- D6: no reflexive "use more BM" -----------------------------------------
+
+test('the turn prompt forbids "use more BM" coaching when nothing was code-switched', () => {
+  assert.match(TURN_SYSTEM_PROMPT, /use more Bahasa Melayu/);
+  assert.match(TURN_SYSTEM_PROMPT, /unless they actually spoke English or Manglish/);
+  assert.match(TURN_SYSTEM_PROMPT, /`improvement` MUST be about something the learner ACTUALLY DID/);
+});
+
+// --- D1 residual: bm_upgrades must be real code-switches --------------------
+
+const MAMAK_CONVO = [
+  { npc: 'Nak minum apa?' },
+  { player: 'Saya nak teh ais kurang manis, and one roti canai please.' },
+  { npc: 'Ok, sekejap ya.' },
+  { player: 'Boleh bungkus? Sorry, I am in a hurry.' },
+];
+
+test('filterUpgrades drops the observed BM-to-BM pair', () => {
+  // The exact output a live run produced in 3 of 4 runs.
+  assert.deepEqual(filterUpgrades([{ you_said: 'kurang manis', try: 'tidak manis' }], MAMAK_CONVO), []);
+});
+
+test('filterUpgrades drops a pair the learner never said', () => {
+  // "traffic jam" is textbook-correct and entirely invented here.
+  assert.deepEqual(filterUpgrades([{ you_said: 'traffic jam', try: 'jalan sesak' }], MAMAK_CONVO), []);
+});
+
+test('filterUpgrades keeps the real code-switches', () => {
+  const kept = filterUpgrades(
+    [
+      { you_said: 'and one roti canai please', try: 'dan satu roti canai' },
+      { you_said: 'I am in a hurry', try: 'saya tergesa-gesa' },
+      { you_said: 'kurang manis', try: 'tidak manis' },
+      { you_said: 'teh ais', try: 'teh sejuk' },
+    ],
+    MAMAK_CONVO,
+  );
+  assert.deepEqual(kept, [
+    { you_said: 'and one roti canai please', try: 'dan satu roti canai' },
+    { you_said: 'I am in a hurry', try: 'saya tergesa-gesa' },
+  ]);
+});
+
+test('filterUpgrades survives a pure-BM conversation with an empty list', () => {
+  const pureBm = [
+    { npc: 'Wei, report semalam dah siap ke?' },
+    { player: 'Belum siap lagi kak, saya tengah buat sekarang.' },
+    { npc: 'Petang ni tu pukul berapa?' },
+    { player: 'Sebelum pukul tiga saya hantar, sempat untuk meeting kak.' },
+  ];
+  const proposed = [
+    { you_said: 'tengah buat', try: 'sedang membuat' },
+    { you_said: 'sempat', try: 'ada masa' },
+    { you_said: 'belum siap lagi', try: 'masih belum siap' },
+  ];
+  assert.deepEqual(filterUpgrades(proposed, pureBm), []);
+});
+
+test('containsEnglish says no to Malay and yes to English', () => {
+  assert.equal(containsEnglish('kurang manis'), false);
+  assert.equal(containsEnglish('belum siap lagi'), false);
+  assert.equal(containsEnglish('petang ni lah kak'), false);
+  assert.equal(containsEnglish('sebelum pukul tiga saya hantar'), false);
+  assert.equal(containsEnglish('less sweet'), true);
+  assert.equal(containsEnglish('traffic jam'), true);
+  assert.equal(containsEnglish('coming right up'), true);
+  assert.equal(containsEnglish('I want to send it'), true);
+});
+
+test('validateSummaryOutput applies the code-switch filter against the conversation', () => {
+  const out = validateSummaryOutput(
+    {
+      ...GOOD_SUMMARY,
+      bm_upgrades: [
+        { you_said: 'kurang manis', try: 'tidak manis' },
+        { you_said: 'please', try: 'tolong' },
+      ],
+    },
+    MAMAK_CONVO,
+  );
+  assert.deepEqual(out.bm_upgrades, [{ you_said: 'please', try: 'tolong' }]);
 });
