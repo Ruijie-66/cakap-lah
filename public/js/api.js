@@ -10,6 +10,15 @@
 // http://localhost:3000/?mock=1&fail=tts exercises those paths end to end
 // without any code change.
 
+// This budget has to OUTLAST the server's worst case, or the deterministic
+// fallback the server was built to produce never reaches the screen. The
+// evaluator retries once, so /api/evaluate and /api/summarise can take up to
+// 2 * LLM_TIMEOUT_MS (server/config.js, 12000 by default) plus overhead ≈ 25 s
+// before the server gives up and answers with the fallback. Keep
+//
+//     DEFAULT_TIMEOUT_MS  >  2 * LLM_TIMEOUT_MS + overhead
+//
+// true: change one of the two numbers and you must check the other.
 const DEFAULT_TIMEOUT_MS = 30000;
 
 /** Query params on the page URL that we forward to the API. */
