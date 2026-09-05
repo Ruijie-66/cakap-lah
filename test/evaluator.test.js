@@ -15,6 +15,14 @@ import * as mock from '../server/adapters/mock.js';
 import { getScenario, publicScenario, ANSWER_KEY_FIELDS } from '../server/game/scenarios.js';
 import { findStep } from '../server/game/branching.js';
 import { computeOverall, PARTIAL_BAND } from '../server/game/scoring.js';
+import { hasLlmKey, LLM_PROVIDER } from '../server/config.js';
+
+// These two assertions describe the "no key configured" branch. When the
+// developer running the suite DOES have a key in .env we skip them rather than
+// make a real network call from a unit test.
+const skipIfKey = hasLlmKey()
+  ? { skip: `LLM_PROVIDER=${LLM_PROVIDER} has a key configured` }
+  : {};
 
 const scenario = getScenario('mamak_01');
 const step = findStep(scenario, 'order');
@@ -91,7 +99,7 @@ test('structured-output schemas require every field', () => {
   assert.equal(SUMMARY_SCHEMA.required.length, Object.keys(SUMMARY_SCHEMA.properties).length);
 });
 
-test('live evaluator with no API key falls back deterministically instead of throwing', async () => {
+test('live evaluator with no API key falls back deterministically instead of throwing', skipIfKey, async () => {
   const out = await liveEvaluate({
     scenario,
     step,
@@ -161,7 +169,7 @@ test('mock summarise returns bm_upgrades harvested across the conversation', asy
   assert.equal(Number.isFinite(out.overall_score), true);
 });
 
-test('live summarise with no key falls back with an empty bm_upgrades array', async () => {
+test('live summarise with no key falls back with an empty bm_upgrades array', skipIfKey, async () => {
   const out = await liveSummarise({ scenario, level: 1, conversation: [], turnScores: [{ overall_score: 80 }] });
   assert.equal(out.fallback, true);
   assert.deepEqual(out.bm_upgrades, []);
