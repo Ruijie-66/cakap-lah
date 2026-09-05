@@ -107,6 +107,12 @@ function handleEvent(type, payload = {}) {
     case 'speak-end':
       ui.setPortraitState(npcRestState);
       ui.setPipeline(null);
+      // The intro is scene-setting, said once. Left up it costs ~62px of
+      // vertical space for the whole mission, which pushes the score chips
+      // below a 720p fold. Clear it as soon as it has actually been HEARD; if
+      // the voice failed, the text is the only copy of the intro, so it stays
+      // until the player starts speaking (see startRecording).
+      if (payload.who === 'narrator' && payload.ok) ui.setNarrator('');
       break;
 
     case 'voice-warning':
@@ -166,6 +172,11 @@ function handleEvent(type, payload = {}) {
 
     case 'mission-end':
       ui.setTranscriptRetry('off');
+      // The mission is over: hand the microphone back to the OS. Holding one
+      // getUserMedia stream open for the whole session leaves the browser and
+      // system recording indicators lit and makes the next mission reuse a
+      // stale stream. The next mission builds a fresh recorder.
+      disposeRecorder();
       lastSummary = payload.summary;
       ui.renderEnd(payload.summary, payload.session);
       ui.showScreen('end');
@@ -231,6 +242,9 @@ async function startRecording() {
   engine.stopAudio();
   ui.hideError();
   ui.clearTurnResult();
+  // Belt and braces for the narrator box: once the player is speaking, the
+  // intro has served its purpose whether or not its audio ever played.
+  ui.setNarrator('');
   // The last notice ("Tak dengar tadi…", the retry hint) stays up while the
   // player speaks — it is the instruction for the attempt they are making.
   ui.setMic('busy', 'Membuka mic…');
@@ -289,6 +303,34 @@ function stopRecordingSilently() {
   if (recorder?.isRecording()) recorder.cancel();
 }
 
+/**
+ * Release the microphone entirely: stop the media tracks, close the
+ * AudioContext, and drop the recorder so the next mission builds a new one and
+ * calls getUserMedia again.
+ *
+ * Call this only at mission boundaries. WITHIN a mission the single stream is
+ * deliberately kept open and shared by the MediaRecorder and the visualiser's
+ * AnalyserNode — reopening the mic between turns would add latency and, in
+ * some browsers, a fresh permission prompt mid-conversation.
+ */
+function disposeRecorder() {
+  cancelArm();
+  visualiser.stop();
+  submitting = false;
+  micHeld = false;
+  const rec = recorder;
+  recorder = null;
+  if (rec) {
+    try {
+      rec.dispose();
+    } catch {
+      /* teardown must never block leaving the mission */
+    }
+  }
+  ui.setMicLevel(0);
+  ui.setTimer(0);
+}
+
 // ───────────────────────────── UI wiring ───────────────────────────────
 ui.el.micBtn.addEventListener('click', () => {
   const mode = ui.el.micBtn.dataset.mode;
@@ -341,7 +383,8 @@ ui.el.verdictSpeakBtn.addEventListener('click', () => {
 
 function goHome() {
   cancelArm();
-  stopRecordingSilently();
+  // Quitting a mission releases the mic too — the home screen never records.
+  disposeRecorder();
   engine.abort();
   ui.setPipeline(null);
   ui.clearTurnPanels();
@@ -357,6 +400,10 @@ async function speakVerdict(summary) {
   if (!summary?.verdict) return;
   await engine.speakCoach(summary.verdict);
 }
+
+// Closing or backgrounding the tab must not leave the OS recording indicator
+// lit. `pagehide` fires for navigation, reload and bfcache alike.
+window.addEventListener('pagehide', () => disposeRecorder());
 
 // ────────────────────────────── boot ───────────────────────────────────
 async function loadHome() {
