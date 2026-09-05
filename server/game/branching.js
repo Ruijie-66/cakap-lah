@@ -87,8 +87,12 @@ export function resolveForward(scenario, targetId, level) {
  * @param {string} currentStepId
  * @param {number} level
  * @param {'success'|'partial'|'retry'} result
- * @returns {{ branch: string, next_step_id: string, complete: boolean }}
+ * @returns {{ branch: string, raw_target: string|null, next_step_id: string,
+ *             complete: boolean }}
  *   `branch` is the raw branch key/target semantics the client shows;
+ *   `raw_target` is the UNRESOLVED value of `step.branches[result]` (null when
+ *     the step declares no branch for this result) — diagnostic only, kept so
+ *     level gating is debuggable; never route on it;
  *   `next_step_id` is always safe to route to.
  */
 export function resolveBranch(scenario, currentStepId, level, result) {

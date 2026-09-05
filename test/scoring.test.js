@@ -11,6 +11,7 @@ import {
   normaliseTranscript,
   isEmptyTranscript,
   clampToPartialBand,
+  applyRetryCap,
   fallbackEvaluate,
   fallbackSummarise,
   summaryBandFor,
@@ -73,22 +74,17 @@ test('result derivation needs BOTH overall >= 75 and intent_pass', () => {
 
 test('retry cap: after RETRY_CAP retries the route grants partial and advances', () => {
   assert.equal(RETRY_CAP, 2);
-  // Mirrors the route's derivation so the rule is covered without HTTP.
-  const apply = (overall, intentPass, retryCount) => {
-    let result = deriveResult(overall, intentPass);
-    let score = overall;
-    if (result === 'retry' && retryCount >= RETRY_CAP) {
-      result = 'partial';
-      score = clampToPartialBand(Math.max(score, 55));
-    }
-    return { result, score };
-  };
-  assert.deepEqual(apply(30, false, 0), { result: 'retry', score: 30 });
-  assert.deepEqual(apply(30, false, 1), { result: 'retry', score: 30 });
-  assert.deepEqual(apply(30, false, 2), { result: 'partial', score: 55 });
-  assert.deepEqual(apply(30, false, 5), { result: 'partial', score: 55 });
-  // A genuine success is untouched by the cap.
-  assert.deepEqual(apply(90, true, 5), { result: 'success', score: 90 });
+  // applyRetryCap is the SHIPPED implementation — /api/evaluate calls this very
+  // function, so this test cannot drift away from the route.
+  assert.deepEqual(applyRetryCap(30, false, 0), { result: 'retry', overall: 30, retry_capped: false });
+  assert.deepEqual(applyRetryCap(30, false, 1), { result: 'retry', overall: 30, retry_capped: false });
+  assert.deepEqual(applyRetryCap(30, false, 2), { result: 'partial', overall: 55, retry_capped: true });
+  assert.deepEqual(applyRetryCap(30, false, 5), { result: 'partial', overall: 55, retry_capped: true });
+  // Clamped to AT LEAST 55, and never above the partial band.
+  assert.deepEqual(applyRetryCap(54, false, 2), { result: 'partial', overall: 55, retry_capped: true });
+  // A genuine success, and a genuine partial, are untouched by the cap.
+  assert.deepEqual(applyRetryCap(90, true, 5), { result: 'success', overall: 90, retry_capped: false });
+  assert.deepEqual(applyRetryCap(60, false, 5), { result: 'partial', overall: 60, retry_capped: false });
 });
 
 test('normaliseTranscript lowercases, strips punctuation, collapses whitespace', () => {

@@ -5,6 +5,8 @@
 // ?mock=1 / x-mock: 1, so the UI can be developed and demoed without a
 // live Revolab API key.
 
+import { fallbackEvaluate, fallbackSummarise } from '../game/scoring.js';
+
 const MOCK_DELAY_MS = 300;
 
 const MOCK_TRANSCRIPT = 'Bang, teh tarik satu, kurang manis.';
@@ -55,8 +57,6 @@ export async function synthesize({ text } = {}) {
 // ---------------------------------------------------------------------------
 // Mock evaluator (Task 2) — mirrors server/adapters/evaluator.js
 // ---------------------------------------------------------------------------
-
-import { fallbackEvaluate, fallbackSummarise } from '../game/scoring.js';
 
 /** Small stable hash so the same transcript always mocks the same way. */
 function hash(str) {

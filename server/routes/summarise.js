@@ -6,7 +6,8 @@
 
 import { Router } from 'express';
 
-import { getEvaluator, evaluatorFailureFlags } from '../adapters/index.js';
+import { getEvaluator, evaluatorFailureFlags, isMockRequest } from '../adapters/index.js';
+import { noteEvaluatorFallback } from '../adapters/evaluator.js';
 import { getScenario } from '../game/scenarios.js';
 import { levelConfig } from '../game/branching.js';
 import {
@@ -55,6 +56,7 @@ router.post('/api/summarise', async (req, res) => {
   } catch (err) {
     // Never crash the end screen.
     console.warn(`[summarise] adapter threw, using fallback: ${err.message}`);
+    if (!isMockRequest(req)) noteEvaluatorFallback('upstream_error');
     raw = fallbackSummarise({ turnScores, reason: 'upstream_error' });
   }
 

@@ -132,7 +132,9 @@ test('forceMalformed (?fail=json) retries then falls back, in both adapters', as
   }
 });
 
-test('forceUpstreamError (?fail=eval) throws so the route can 502', async () => {
+// The ADAPTER still throws on ?fail=eval; the route no longer turns that into a
+// 502 — it degrades to the deterministic fallback (see test/routes.test.js).
+test('forceUpstreamError (?fail=eval) throws out of the adapter', async () => {
   await assert.rejects(() => mock.evaluate({ step, transcript: 'x', forceUpstreamError: true }));
   await assert.rejects(() => liveEvaluate({ step, transcript: 'x', forceUpstreamError: true }));
 });

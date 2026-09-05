@@ -236,12 +236,15 @@ async function callOpenAI({ system, user, schema, schemaName }) {
 }
 
 async function callGemini({ system, user, schema }) {
-  const url = `${GEMINI_BASE_URL}/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
-    llmApiKey(),
-  )}`;
+  // The key goes in a header, never in the query string: URLs end up in proxy
+  // and access logs, request headers do not.
+  const url = `${GEMINI_BASE_URL}/v1beta/models/${GEMINI_MODEL}:generateContent`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      'x-goog-api-key': llmApiKey(),
+    },
     signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
@@ -265,6 +268,47 @@ async function callGemini({ system, user, schema }) {
 
 function callProvider(args) {
   return LLM_PROVIDER === 'gemini' ? callGemini(args) : callOpenAI(args);
+}
+
+// ---------------------------------------------------------------------------
+// Consecutive-fallback alarm
+// ---------------------------------------------------------------------------
+// A rejected key or a wrong LLM_PROVIDER used to be completely silent: every
+// turn quietly returned the deterministic fallback's flat scores and generic
+// coaching, i.e. a working-but-lobotomised demo. Warn loudly once a streak of
+// fallbacks builds up, and again on every further multiple of the threshold.
+
+/** Consecutive fallbacks tolerated before the loud warning fires. */
+export const FALLBACK_WARN_THRESHOLD = 3;
+
+let consecutiveFallbacks = 0;
+
+/** Record one evaluator/summariser fallback; warns on a sustained streak. */
+export function noteEvaluatorFallback(reason = 'unknown') {
+  consecutiveFallbacks += 1;
+  if (consecutiveFallbacks % FALLBACK_WARN_THRESHOLD === 0) {
+    console.warn(
+      `\n*** [evaluator] WARNING: the evaluator has fallen back ${consecutiveFallbacks} times in a row ` +
+        `(latest reason: ${reason}). Learners are getting flat fallback scores and generic coaching. ` +
+        `Check LLM_PROVIDER (currently "${LLM_PROVIDER}") and the matching API key. ***\n`,
+    );
+  }
+  return consecutiveFallbacks;
+}
+
+/** Record a real LLM success; clears the streak. */
+export function noteEvaluatorSuccess() {
+  consecutiveFallbacks = 0;
+}
+
+/** Test/introspection helper. */
+export function consecutiveFallbackCount() {
+  return consecutiveFallbacks;
+}
+
+/** Test helper — reset the streak counter. */
+export function resetFallbackStreak() {
+  consecutiveFallbacks = 0;
 }
 
 let warnedNoKey = false;
@@ -325,10 +369,12 @@ export async function evaluate(input = {}) {
   if (input.forceMalformed) {
     console.warn('[evaluator] forced malformed output (fail=json): attempt 1/2 failed');
     console.warn('[evaluator] forced malformed output (fail=json): attempt 2/2 failed');
+    noteEvaluatorFallback('malformed_output');
     return fallbackEvaluate({ step, transcript, reason: 'malformed_output' });
   }
 
   if (noKey()) {
+    noteEvaluatorFallback('no_api_key');
     return fallbackEvaluate({ step, transcript, reason: 'no_api_key' });
   }
 
@@ -360,7 +406,11 @@ export async function evaluate(input = {}) {
     label: 'evaluate',
   });
 
-  if (!ok) return fallbackEvaluate({ step, transcript, reason: 'llm_failed' });
+  if (!ok) {
+    noteEvaluatorFallback('llm_failed');
+    return fallbackEvaluate({ step, transcript, reason: 'llm_failed' });
+  }
+  noteEvaluatorSuccess();
   return { ...ok, source: 'llm', fallback: false };
 }
 
@@ -384,10 +434,12 @@ export async function summarise(input = {}) {
   if (input.forceMalformed) {
     console.warn('[evaluator] forced malformed output (fail=json): attempt 1/2 failed');
     console.warn('[evaluator] forced malformed output (fail=json): attempt 2/2 failed');
+    noteEvaluatorFallback('malformed_output');
     return fallbackSummarise({ turnScores, reason: 'malformed_output' });
   }
 
   if (noKey()) {
+    noteEvaluatorFallback('no_api_key');
     return fallbackSummarise({ turnScores, reason: 'no_api_key' });
   }
 
@@ -411,6 +463,10 @@ export async function summarise(input = {}) {
     label: 'summarise',
   });
 
-  if (!ok) return fallbackSummarise({ turnScores, reason: 'llm_failed' });
+  if (!ok) {
+    noteEvaluatorFallback('llm_failed');
+    return fallbackSummarise({ turnScores, reason: 'llm_failed' });
+  }
+  noteEvaluatorSuccess();
   return { ...ok, source: 'llm', fallback: false };
 }

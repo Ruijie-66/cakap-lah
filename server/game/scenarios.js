@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { includedSteps, levelConfig, resolveForward } from './branching.js';
+import { includedSteps, levelConfig, resolveForward, COMPLETE } from './branching.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCENARIO_DIR = path.join(__dirname, '..', '..', 'content', 'scenarios');
@@ -110,7 +110,7 @@ export function publicScenario(scenario, level) {
     speed: cfg.speed,
     hint: cfg.hint,
     allowed_code_switch: cfg.allowed_code_switch,
-    first_step_id: steps.length ? steps[0].id : '__complete__',
+    first_step_id: steps.length ? steps[0].id : COMPLETE,
     steps,
   };
 }

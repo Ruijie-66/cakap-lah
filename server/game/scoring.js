@@ -78,6 +78,31 @@ export function deriveResult(overall, intentPass) {
   return 'retry';
 }
 
+/**
+ * Retry cap. After RETRY_CAP retries on ONE step we grant partial credit and
+ * let the run advance rather than looping — the demo must never dead-end.
+ *
+ * This is THE implementation: /api/evaluate calls it, and so does the unit
+ * test, so the two can never drift apart.
+ *
+ * @param {number} overall recomputed overall score for this turn
+ * @param {boolean} intentPass the model's intent_pass, already coerced
+ * @param {number} retryCount retries already spent on this step
+ * @returns {{result: 'success'|'partial'|'retry', overall: number, retry_capped: boolean}}
+ */
+export function applyRetryCap(overall, intentPass, retryCount) {
+  const result = deriveResult(overall, intentPass === true);
+  const spent = Number(retryCount);
+  if (result === 'retry' && Number.isFinite(spent) && spent >= RETRY_CAP) {
+    return {
+      result: 'partial',
+      overall: clampToPartialBand(Math.max(clamp100(overall), PARTIAL_BAND.min)),
+      retry_capped: true,
+    };
+  }
+  return { result, overall: clamp100(overall), retry_capped: false };
+}
+
 /** lowercase, strip punctuation, collapse whitespace */
 export function normaliseTranscript(text) {
   return String(text == null ? '' : text)

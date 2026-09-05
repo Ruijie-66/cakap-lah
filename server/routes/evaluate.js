@@ -7,17 +7,23 @@
 
 import { Router } from 'express';
 
-import { getEvaluator, evaluatorFailureFlags } from '../adapters/index.js';
+import { getEvaluator, evaluatorFailureFlags, isMockRequest } from '../adapters/index.js';
+import { noteEvaluatorFallback } from '../adapters/evaluator.js';
 import { getScenario } from '../game/scenarios.js';
-import { levelConfig, findStep, resolveBranch, COMPLETE } from '../game/branching.js';
+import {
+  levelConfig,
+  findStep,
+  resolveBranch,
+  isStepIncluded,
+  COMPLETE,
+} from '../game/branching.js';
 import {
   computeOverall,
   bandFor,
   bandLabel,
-  deriveResult,
+  applyRetryCap,
   isEmptyTranscript,
-  clampToPartialBand,
-  RETRY_CAP,
+  fallbackEvaluate,
 } from '../game/scoring.js';
 
 const router = Router();
@@ -58,6 +64,15 @@ router.post('/api/evaluate', async (req, res) => {
   if (!scenario) return res.status(404).json({ error: `Unknown scenario "${scenarioId}".` });
   const step = findStep(scenario, stepId);
   if (!step) return res.status(404).json({ error: `Unknown step "${stepId}" in scenario "${scenarioId}".` });
+  // The step exists, but is it part of THIS level's route? Scoring a step that
+  // is gated out silently routes the player to an early end screen, so a client
+  // bug must surface as a 400 rather than as a mysteriously short run.
+  if (!isStepIncluded(step, level)) {
+    return badRequest(
+      res,
+      `Step "${stepId}" is not part of scenario "${scenarioId}" at level ${level}.`,
+    );
+  }
 
   const cfg = levelConfig(scenario, level);
   const retryCount = Number.isFinite(Number(rawRetryCount)) ? Math.max(0, Number(rawRetryCount)) : 0;
@@ -106,21 +121,22 @@ router.post('/api/evaluate', async (req, res) => {
       ...flags,
     });
   } catch (err) {
-    return res.status(502).json({ error: `Evaluation failed: ${err.message}` });
+    // The demo must never dead-end and a system failure must never cost the
+    // learner points: degrade to the deterministic fallback, exactly as
+    // /api/summarise does. (?fail=eval therefore exercises THIS path.)
+    console.warn(`[evaluate] adapter threw, using fallback: ${err.message}`);
+    if (!isMockRequest(req)) noteEvaluatorFallback('upstream_error');
+    raw = fallbackEvaluate({ step, transcript, reason: 'upstream_error' });
   }
 
   // ---- Server-side derivation ------------------------------------------------
-  let overall = computeOverall(raw);
-  let result = deriveResult(overall, raw.intent_pass === true);
-
-  // Retry cap: after RETRY_CAP retries on one step, grant partial credit and
-  // advance rather than looping. The demo must never dead-end on stage.
-  let retryCapped = false;
-  if (result === 'retry' && retryCount >= RETRY_CAP) {
-    result = 'partial';
-    overall = clampToPartialBand(Math.max(overall, 55));
-    retryCapped = true;
-  }
+  // Single source of truth for the cap lives in game/scoring.js so the unit
+  // test and this route can never disagree.
+  const { result, overall, retry_capped: retryCapped } = applyRetryCap(
+    computeOverall(raw),
+    raw.intent_pass === true,
+    retryCount,
+  );
 
   const band = bandFor(overall);
   const branchInfo = resolveBranch(scenario, step.id, level, result);

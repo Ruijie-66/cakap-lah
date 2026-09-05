@@ -22,9 +22,6 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, mock: MOCK });
 });
 
-// Later tasks mount their own routers the same way, right here:
-//   import evaluateRouter from './routes/evaluate.js';
-//   app.use(evaluateRouter);
 app.use(sttRouter);
 app.use(ttsRouter);
 app.use(scenariosRouter);
@@ -33,6 +30,16 @@ app.use(summariseRouter);
 
 app.use(express.static(publicDir));
 
-app.listen(PORT, () => {
-  console.log(`CAKAP LAH! server listening on http://localhost:${PORT} (mock=${MOCK})`);
-});
+// Exported so tests (and any future embedder) can boot the same app on an
+// ephemeral port; we only listen when this file is the process entrypoint.
+export default app;
+export { app };
+
+const isEntrypoint =
+  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isEntrypoint) {
+  app.listen(PORT, () => {
+    console.log(`CAKAP LAH! server listening on http://localhost:${PORT} (mock=${MOCK})`);
+  });
+}
