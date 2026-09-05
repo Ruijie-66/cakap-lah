@@ -1463,8 +1463,8 @@ body[data-mic="busy"] .viz-idle { opacity: 0; }
 
 /* ── Responsive: the demo is recorded at 1280×720 / 1440×900 ─────── */
 @media (max-height: 800px) {
-  .stage { padding: 6px 20px 14px; gap: 18px; }
-  .scene-bar { padding: 10px 20px 6px; }
+  .stage { padding: 6px 20px 10px; gap: 18px; }
+  .scene-bar { padding: 8px 20px 4px; }
   .scene-context { font-size: 12.5px; padding-bottom: 4px; }
   .narrator { margin: 2px auto 4px; padding: 6px 14px; }
   .narrator p { font-size: 12.5px; margin-top: 1px; }
@@ -1473,18 +1473,30 @@ body[data-mic="busy"] .viz-idle { opacity: 0; }
   .portrait-face { width: 98px; height: 98px; font-size: 46px; }
   .npc-name { margin-top: 8px; font-size: 13.5px; }
   .bubble { padding: 13px 18px; font-size: clamp(17px, 2vw, 22px); }
-  .task-hint { margin-top: 9px; padding: 8px 12px; font-size: 13px; }
-  .dock-inner { padding: 10px 20px 16px; gap: 9px; }
+  .task-hint { margin-top: 6px; padding: 6px 12px; font-size: 13px; }
+  .dock-inner { padding: 10px 20px 14px; gap: 8px; }
   .dock canvas { height: 66px; }
+  /* A retry notice can sit alongside the transcript and the score panel for a
+     beat; at 720p that stack is the tallest thing the play screen ever shows,
+     so the notice earns the least room of the three. */
+  .notice { padding: 9px 16px; font-size: 14px; }
   .result-panel { gap: 18px; padding: 9px 16px; }
   .score { font-size: 46px; }
   .score-dial { width: 90px; height: 90px; }
   .score-block { min-width: 118px; }
   .coach-line { margin-bottom: 8px; font-size: 15.5px; }
   #coachBtn { top: 9px; padding: 5px 11px; }
-  .transcript-panel { padding: 11px 16px; }
+  .transcript-panel { padding: 9px 16px; }
   .transcript-panel .said { font-size: clamp(18px, 2vw, 21px); }
-  .pipeline { padding: 12px 14px 10px; }
+  /* The pipeline is on screen at the same time as the transcript AND the score
+     panel for the whole of the NPC's spoken reply — the tallest stack the play
+     screen ever holds. At 720p it collapses to a single-line strip: the stage
+     names still read, the "speech-to-text" glosses go. */
+  .pipeline { padding: 8px 14px 8px; }
+  .pipe-step { padding: 5px 10px; gap: 8px; }
+  .pipe-dot { width: 22px; height: 22px; font-size: 13px; }
+  .pipe-step.is-done .pipe-dot::after { font-size: 13px; }
+  .pipe-text i { display: none; }
   .mic-holder { width: 104px; height: 104px; }
   .mic-btn { width: 86px; height: 86px; }
   .mic-icon { width: 30px; height: 30px; transform: translateY(-8px); }
