@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CAKAP LAH! — voice missions in Bahasa Melayu</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="game">
+
+<!-- ─────────────────────────── HOME ─────────────────────────── -->
+<section class="screen is-active" id="screen-home">
+  <div class="home-wrap">
+    <header class="home-head">
+      <h1 class="logo">CAKAP <span class="lah">LAH!</span></h1>
+      <p class="tagline">Three missions. One mic. Speak Bahasa Melayu or go thirsty.</p>
+      <span class="badge" id="mockBadge" hidden>mock mode</span>
+    </header>
+
+    <div class="level-picker" role="radiogroup" aria-label="Pilih tahap">
+      <span class="level-label">Tahap</span>
+      <button class="level-btn is-on" type="button" role="radio" aria-checked="true" data-level="1">
+        <b>1</b><span>Santai</span><em>English hint</em>
+      </button>
+      <button class="level-btn" type="button" role="radio" aria-checked="false" data-level="2">
+        <b>2</b><span>Biasa</span><em>Hint dalam BM</em>
+      </button>
+      <button class="level-btn" type="button" role="radio" aria-checked="false" data-level="3">
+        <b>3</b><span>Power</span><em>No hint · extra twist</em>
+      </button>
+    </div>
+
+    <div class="cards" id="scenarioCards" aria-busy="true">
+      <p class="loading-note">Memuatkan misi…</p>
+    </div>
+
+    <p class="home-foot">
+      Mic only — no typing. Audio and transcripts stay in this tab for the session and are never stored.
+      <a href="/harness.html">Mic harness</a>
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────── PLAY ─────────────────────────── -->
+<section class="screen" id="screen-play">
+  <div class="scene" id="scene" data-scene="mamak">
+    <div class="scene-art" id="sceneArt" aria-hidden="true"></div>
+
+    <div class="scene-bar">
+      <button class="ghost-btn" id="quitBtn" type="button">← Keluar</button>
+      <div class="scene-title"><b id="playTitle">—</b><span class="pill" id="playLevel">Tahap 1</span></div>
+      <div class="step-dots" id="stepDots" aria-label="Kemajuan"></div>
+    </div>
+
+    <div class="narrator" id="narratorBox" hidden><span class="who">Narrator</span><p id="narratorText"></p></div>
+
+    <div class="stage">
+      <figure class="npc">
+        <div class="portrait" id="portrait" data-state="idle">
+          <img id="portraitImg" alt="" hidden />
+          <div class="portrait-fallback" id="portraitFallback" aria-hidden="true"></div>
+        </div>
+        <figcaption class="npc-name" id="npcName">—</figcaption>
+      </figure>
+
+      <div class="speech">
+        <div class="bubble" id="npcLine">…</div>
+        <div class="task-hint" id="taskHint" hidden></div>
+        <button class="ghost-btn small" id="replayBtn" type="button">🔊 Dengar sekali lagi</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dock">
+    <div class="phase" id="phaseLabel">Bersedia…</div>
+
+    <div class="mic-row">
+      <button class="mic-btn" id="micBtn" type="button" disabled>MIC</button>
+      <div class="mic-side">
+        <canvas id="viz" aria-hidden="true"></canvas>
+        <div class="meta">
+          <span id="micHint">Tunggu…</span>
+          <span class="timer" id="timer">0.0s</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline" id="pipeline" hidden>
+      <span class="pipe-step" data-stage="stt">🎧 Dengar</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-step" data-stage="eval">🧠 Faham</span>
+      <span class="pipe-arrow">→</span>
+      <span class="pipe-step" data-stage="tts">🗣️ Jawab</span>
+    </div>
+
+    <div class="panel transcript-panel" id="transcriptPanel" hidden>
+      <span class="panel-label">Kami dengar</span>
+      <p class="said" id="transcriptText"></p>
+    </div>
+
+    <div class="panel result-panel" id="resultPanel" hidden>
+      <div class="score-block">
+        <div class="score" id="scoreNum">0</div>
+        <div class="band" id="bandLabel">—</div>
+      </div>
+      <div class="coach">
+        <p class="coach-line" id="coachLine"></p>
+        <p class="coach-sub" id="coachSub" hidden></p>
+        <button class="ghost-btn small" id="coachBtn" type="button">🔊 Coach</button>
+      </div>
+      <div class="subscores" id="subScores"></div>
+    </div>
+
+    <div class="panel notice" id="noticePanel" hidden></div>
+
+    <div class="panel error-panel" id="errorPanel" hidden>
+      <p class="err-text" id="errorText"></p>
+      <div class="err-actions">
+        <button class="primary-btn" id="errorRetryBtn" type="button">Cuba lagi</button>
+        <button class="ghost-btn" id="errorHomeBtn" type="button">Balik menu</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── MISSION END ───────────────────────── -->
+<section class="screen" id="screen-end">
+  <div class="end-wrap">
+    <header class="end-head">
+      <div class="end-score-ring" id="endRing" data-band="almost">
+        <span class="end-score" id="endScore">0</span>
+        <span class="end-of">/100</span>
+      </div>
+      <div>
+        <div class="end-band" id="endBand">—</div>
+        <h2 class="end-verdict" id="endVerdict">—</h2>
+        <div class="badge-chip" id="endBadge" hidden></div>
+        <button class="ghost-btn small" id="verdictSpeakBtn" type="button">🔊 Dengar coach</button>
+      </div>
+    </header>
+
+    <p class="end-summary" id="endSummary"></p>
+
+    <div class="end-cols">
+      <div class="panel">
+        <span class="panel-label">Kuat</span>
+        <ul id="endStrengths"></ul>
+      </div>
+      <div class="panel">
+        <span class="panel-label">Boleh baiki</span>
+        <ul id="endImprovements"></ul>
+      </div>
+    </div>
+
+    <div class="panel upgrades" id="endUpgradesPanel">
+      <span class="panel-label">BM upgrades</span>
+      <div id="endUpgrades"></div>
+    </div>
+
+    <div class="panel">
+      <span class="panel-label">Transkrip penuh</span>
+      <ol class="transcript-log" id="endTranscript"></ol>
+    </div>
+
+    <div class="end-actions">
+      <button class="primary-btn" id="againBtn" type="button">Main lagi</button>
+      <button class="ghost-btn" id="homeBtn" type="button">Pilih misi lain</button>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
