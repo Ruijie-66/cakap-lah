@@ -14,6 +14,9 @@ import {
   SUMMARY_COACHING_LANGUAGE_RULE,
   withCoachingLanguage,
   isUsefulUpgrade,
+  answerKeyPhrases,
+  stripAnswerKeyLeak,
+  DEFAULT_REPROMPT,
   filterUpgrades,
   containsEnglish,
   EVAL_TEMPERATURE,
@@ -400,4 +403,119 @@ test('validateSummaryOutput applies the code-switch filter against the conversat
     MAMAK_CONVO,
   );
   assert.deepEqual(out.bm_upgrades, [{ you_said: 'please', try: 'tolong' }]);
+});
+
+
+// --- npc_reply: personas in, answer key out --------------------------------
+
+test('every scenario gives its NPC a persona, and the makcik step overrides it', () => {
+  for (const id of ['mamak_01', 'mall_01', 'office_01']) {
+    const s = getScenario(id);
+    assert.ok(s.npc_persona && s.npc_persona.length > 80, `${id} needs an npc_persona`);
+    assert.ok(s.npc_reprompt, `${id} needs an npc_reprompt safety line`);
+  }
+  const makcik = getScenario('mall_01').steps.find((st) => st.id === 'give_directions');
+  assert.equal(makcik.npc_name, 'Makcik');
+  assert.ok(makcik.npc_persona, 'the makcik step carries its own persona override');
+  assert.notEqual(makcik.npc_persona, getScenario('mall_01').npc_persona);
+});
+
+test('npc_persona is stripped from everything the browser can see', () => {
+  assert.ok(ANSWER_KEY_FIELDS.includes('npc_persona'));
+  assert.ok(ANSWER_KEY_FIELDS.includes('npc_reprompt'));
+  for (const id of ['mamak_01', 'mall_01', 'office_01']) {
+    for (const level of [1, 2, 3]) {
+      const json = JSON.stringify(publicScenario(getScenario(id), level));
+      assert.ok(!json.includes('npc_persona'), `${id} L${level} leaks npc_persona`);
+      assert.ok(!json.includes('npc_reprompt'), `${id} L${level} leaks npc_reprompt`);
+      // The persona TEXT, not just the key name, must be absent.
+      assert.ok(
+        !json.includes(getScenario(id).npc_persona.slice(0, 40)),
+        `${id} L${level} leaks persona text`,
+      );
+    }
+  }
+});
+
+test('the turn prompt forbids the NPC from speaking or completing the task', () => {
+  const p = TURN_SYSTEM_PROMPT;
+  assert.match(p, /npc_persona/);
+  assert.match(p, /NEVER state, hint at, complete or half-complete the task/);
+  assert.match(p, /React ONLY to what the learner \*\*actually said\*\*/);
+  assert.match(p, /word test/);
+});
+
+test('answerKeyPhrases pools the whole scenario and drops bare function words', () => {
+  const scenario = getScenario('mamak_01');
+  const step = scenario.steps.find((s) => s.id === 'wrong_order');
+  const phrases = answerKeyPhrases(step, scenario);
+  // `kurang manis` belongs to the PREVIOUS step and still counts here.
+  assert.ok(phrases.includes('kurang manis'));
+  assert.ok(phrases.includes('teh tarik'));
+  // office_01 lists "boleh"/"tapi" as key concepts; alone they teach nothing.
+  const office = getScenario('office_01');
+  const cover = office.steps.find((s) => s.id === 'cover_me');
+  const officePhrases = answerKeyPhrases(cover, office);
+  assert.ok(!officePhrases.includes('boleh'));
+  assert.ok(!officePhrases.includes('tapi'));
+  assert.ok(officePhrases.includes('tak boleh'), 'multi-word phrases stay banned');
+});
+
+test('stripAnswerKeyLeak excises the answer the learner never said', () => {
+  const scenario = getScenario('mamak_01');
+  const step = scenario.steps.find((s) => s.id === 'order');
+  const out = stripAnswerKeyLeak('Eh, teh tarik satu? Kurang manis ke? Jom!', {
+    step,
+    scenario,
+    transcript: 'emm apa ya teh',
+    conversationHistory: [{ npc: step.tts_prompt }],
+  });
+  assert.ok(!/kurang manis/i.test(out.reply), 'the missing half of the answer is gone');
+  assert.ok(out.leaked.includes('kurang manis'));
+});
+
+test('stripAnswerKeyLeak leaves words the learner or the NPC already said', () => {
+  const scenario = getScenario('mamak_01');
+  const step = scenario.steps.find((s) => s.id === 'order');
+  const line = 'Teh tarik kurang manis, ya? Jap ya!';
+  const out = stripAnswerKeyLeak(line, {
+    step,
+    scenario,
+    transcript: 'Saya nak teh tarik satu, kurang manis.',
+    conversationHistory: [],
+  });
+  assert.equal(out.reply, line);
+  assert.deepEqual(out.leaked, []);
+});
+
+test('stripAnswerKeyLeak falls back to the character re-prompt when nothing survives', () => {
+  const scenario = getScenario('mamak_01');
+  const step = scenario.steps.find((s) => s.id === 'order');
+  const out = stripAnswerKeyLeak('Teh tarik kurang manis ke?', {
+    step,
+    scenario,
+    transcript: 'hmm',
+    conversationHistory: [],
+    fallbackLine: scenario.npc_reprompt,
+  });
+  assert.equal(out.reply, scenario.npc_reprompt);
+  const bare = stripAnswerKeyLeak('Teh tarik kurang manis ke?', {
+    step,
+    scenario,
+    transcript: 'hmm',
+    conversationHistory: [],
+  });
+  assert.equal(bare.reply, DEFAULT_REPROMPT);
+});
+
+test('stripAnswerKeyLeak does not leave a dangling connective behind', () => {
+  const scenario = getScenario('mall_01');
+  const step = scenario.steps.find((s) => s.id === 'confirm');
+  const out = stripAnswerKeyLeak('Oh, kasut baru? Tapi, food court kat tingkat berapa?', {
+    step,
+    scenario,
+    transcript: 'saya baru beli kasut',
+    conversationHistory: [],
+  });
+  assert.equal(out.reply, 'Oh, kasut baru?');
 });

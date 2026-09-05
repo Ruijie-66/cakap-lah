@@ -26,6 +26,14 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 - [ ] Approved as-is  
 - Correction: `________________________________________`
 
+### Re-prompt line  ·  Abang Mamak — 🔊 spoken aloud by TTS
+
+_Played when the generated reply had to be discarded — the character simply asks again._
+
+> Hah? Bang cakap apa tu? Sekali lagi.
+
+- [ ] Approved  ·  Correction: `________________________________`
+
 ### Step 1 — `order`  ·  levels 1/2/3  ·  Abang Mamak
 
 **Abang Mamak says** — 🔊 spoken aloud by TTS
@@ -133,6 +141,14 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 - [ ] Approved as-is  
 - Correction: `________________________________________`
 
+### Re-prompt line  ·  Abang Guard — 🔊 spoken aloud by TTS
+
+_Played when the generated reply had to be discarded — the character simply asks again._
+
+> Maaf encik, boleh ulang sekali lagi?
+
+- [ ] Approved  ·  Correction: `________________________________`
+
 ### Step 1 — `ask`  ·  levels 1/2/3  ·  Abang Guard
 
 **Abang Guard says** — 🔊 spoken aloud by TTS
@@ -199,6 +215,12 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 
 - [ ] Approved  ·  Correction: `________________________________`
 
+**Makcik's re-prompt line** — 🔊 spoken aloud by TTS
+
+> Aduh, makcik tak berapa faham la dik. Cuba cakap sekali lagi?
+
+- [ ] Approved  ·  Correction: `________________________________`
+
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Sekarang orang pula tanya anda. Bagi arah yang anda baru dapat tadi.
@@ -245,6 +267,14 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 
 - [ ] Approved as-is  
 - Correction: `________________________________________`
+
+### Re-prompt line  ·  Kak Ana — 🔊 spoken aloud by TTS
+
+_Played when the generated reply had to be discarded — the character simply asks again._
+
+> Kejap. Kamu maksud macam mana ni?
+
+- [ ] Approved  ·  Correction: `________________________________`
 
 ### Step 1 — `status`  ·  levels 1/2/3  ·  Kak Ana
 
@@ -336,6 +366,16 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 ### Closing line  ·  Kak Ana — 🔊 spoken aloud by TTS
 
 > Okay, saya pegang janji ni tau. Jangan esok pula.
+
+- [ ] Approved  ·  Correction: `________________________________`
+
+---
+
+## Shared fallback line  ·  not tied to one character
+
+**Last-resort re-prompt** (`DEFAULT_REPROMPT`, `server/adapters/evaluator.js`) — 🔊 spoken aloud by TTS
+
+> Hah? Macam mana tu? Cuba cakap sekali lagi.
 
 - [ ] Approved  ·  Correction: `________________________________`
 

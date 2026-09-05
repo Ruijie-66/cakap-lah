@@ -14,12 +14,23 @@ import { includedSteps, isStepIncluded, levelConfig, resolveForward, COMPLETE } 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCENARIO_DIR = path.join(__dirname, '..', '..', 'content', 'scenarios');
 
-/** Fields that are evaluator inputs and must NEVER reach the browser. */
+/**
+ * Fields that are evaluator inputs and must NEVER reach the browser.
+ *
+ * `npc_persona` is not an answer key, but it is model guidance in the same
+ * class: character notes written for the LLM, never for a player to read.
+ * Shipping it would put the NPC's stage directions on the wire next to the
+ * lines they are meant to produce. `npc_reprompt` is the server-side safety
+ * net used when a generated line has to be discarded, and is likewise never
+ * something the client chooses to say.
+ */
 export const ANSWER_KEY_FIELDS = Object.freeze([
   'sample_answers',
   'expected_semantics',
   'fallback_concepts',
   'key_concepts',
+  'npc_persona',
+  'npc_reprompt',
 ]);
 
 function loadAll() {

@@ -48,6 +48,14 @@ for path in sorted(SRC.glob("*.json"), key=lambda p: json.load(open(p))["order"]
         "- [ ] Approved as-is  ",
         "- Correction: `________________________________________`",
         "",
+        f"### Re-prompt line  ·  {d['npc_name']} — {SPOKEN}",
+        "",
+        "_Played when the generated reply had to be discarded — the character simply asks again._",
+        "",
+        "> " + d["npc_reprompt"],
+        "",
+        "- [ ] Approved  ·  Correction: `________________________________`",
+        "",
     ]
 
     for i, s in enumerate(d["steps"], 1):
@@ -62,6 +70,17 @@ for path in sorted(SRC.glob("*.json"), key=lambda p: json.load(open(p))["order"]
             "",
             "- [ ] Approved  ·  Correction: `________________________________`",
             "",
+        ]
+        if s.get("npc_reprompt"):
+            lines += [
+                f"**{who}'s re-prompt line** — {SPOKEN}",
+                "",
+                "> " + s["npc_reprompt"],
+                "",
+                "- [ ] Approved  ·  Correction: `________________________________`",
+                "",
+            ]
+        lines += [
             f"**Task hint (Malay, level 2)** — {SCREEN}",
             "",
             "> " + s["task_ms"],
@@ -107,6 +126,23 @@ for path in sorted(SRC.glob("*.json"), key=lambda p: json.load(open(p))["order"]
         "---",
         "",
     ]
+
+# Not from content/: the last-resort re-prompt in server/adapters/evaluator.js,
+# used only if a scenario ever ships without its own `npc_reprompt`. Kept in
+# this sheet because a player can hear it. Mirror any correction into
+# DEFAULT_REPROMPT there.
+lines += [
+    "## Shared fallback line  ·  not tied to one character",
+    "",
+    f"**Last-resort re-prompt** (`DEFAULT_REPROMPT`, `server/adapters/evaluator.js`) — {SPOKEN}",
+    "",
+    "> Hah? Macam mana tu? Cuba cakap sekali lagi.",
+    "",
+    "- [ ] Approved  ·  Correction: `________________________________`",
+    "",
+    "---",
+    "",
+]
 
 lines += [
     "## Specific things I'm unsure about",

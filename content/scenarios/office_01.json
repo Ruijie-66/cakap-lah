@@ -6,6 +6,8 @@
   "context": "Your manager stops by your desk. The report from yesterday is not finished.",
 
   "npc_name": "Kak Ana",
+  "npc_reprompt": "Kejap. Kamu maksud macam mana ni?",
+  "npc_persona": "Kak Ana: the player's manager, forties, direct and competent. She is not hostile and not a bully, but she is waiting on something that is late and she lets that show — short sentences, a level tone, real social pressure. Office Malay with the usual borrowed words (\"report\", \"meeting\", \"client\"). She calls the player \"kamu\" or by nothing at all. When the answer she gets is vague, evasive or off the point, she does not soften it away and does not suggest the answer — she presses, the way a manager does: repeats the question more narrowly, asks for a time, or waits (\"Jadi bila?\", \"Kamu maksud macam mana ni?\"). She acknowledges a real reason before pushing again.",
   "voice_id": "nur-b184422b",
   "scene": "office",
   "portrait": "kak-ana",

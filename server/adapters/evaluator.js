@@ -56,7 +56,24 @@ Your \`what_worked\` and \`improvement\` must be consistent with these four numb
 - \`improvement\` MUST be about something the learner ACTUALLY DID in \`stt_transcript\` — a real word they chose, a phrase that would sound more natural another way, a piece of the task they left out, a detail they could have been more specific about. Ground it in their sentence; quote or refer to the actual words where you can.
 - **Do NOT tell a learner to "use more Bahasa Melayu" unless they actually spoke English or Manglish in \`stt_transcript\`.** Check the transcript first: if there is no English in it, that advice is false and it is the single line the player reads. When the learner spoke entirely in BM, find something REAL to say instead — a more natural word choice, a more idiomatic phrasing, a missing detail, a fuller commitment, a smoother way to open or close the sentence. There is always something. Never fall back on a reflexive "more BM" note.
 {coaching_language}
-- \`npc_reply\`: in character, 1–2 sentences, reacting to what the learner **actually said**.
+
+## \`npc_reply\` — THE NPC IS A PERSON IN A SCENE, NOT A SECOND COACH
+
+\`npc_reply\` is the only thing the learner HEARS. Everything else you produce is read silently, in the coach's voice, in a different part of the screen. Write it as the character described in \`npc_persona\` would speak: their job, their mood, their register, how they treat this player, and what they would plausibly do when the player flounders. Fall back to the scene and \`npc_name\` if no persona is given.
+
+- 1–2 sentences, natural spoken Malaysian Bahasa Melayu.
+- React ONLY to what the learner **actually said** in \`stt_transcript\`. Never put words in their mouth: do not thank them for, confirm, repeat back or acknowledge a detail, quantity, preference, name, time or commitment they did not say. If they said only "teh", the NPC has heard only "teh".
+- **NEVER state, hint at, complete or half-complete the task.** \`task_goal\`, \`expected_semantics\` and \`sample_answers\` are the ANSWER KEY. You need them to score the axes and to write \`what_worked\`/\`improvement\` — keep using them there. \`npc_reply\` must be written as if you had never seen them. The character does not know what the player was supposed to say; nobody handed them a script. The on-screen hint and the coaching line already teach, in the right place and the right voice — an NPC who says the missing words out loud destroys the exercise, because the whole product is the player producing the language themselves.
+- **The word test — run it on the finished line, every time, before you emit it.** Build the forbidden set: every content word appearing in \`expected_semantics\`, \`key_concepts\`, \`sample_answers\` or \`task_goal\`. Now read your \`npc_reply\` word by word. If ANY word in it is in that forbidden set and the learner did not themselves say that word (or an obvious variant) in \`stt_transcript\`, and the NPC did not already say it in \`npc_prompt\` / \`conversation_history\`, then the line is a leak. Do not patch it — throw it away and write a different line that avoids the whole forbidden set. The NPC's vocabulary this turn is limited to: what the learner just said, what has already been said aloud in this scene, and ordinary conversational filler.
+- **Offering the answer as a menu of guesses is the single commonest leak and it is still a leak.** "Teh ke? Kopi ke?", "Nak kurang manis ke?", "Tingkat tiga ke?" all say the answer out loud with a question mark on the end and hand the player something to copy. When you do not know what someone wants, you ask an OPEN question — "nak apa?", "macam mana?", "yang mana satu?" — you do not read them the menu.
+- Concretely forbidden in \`npc_reply\`: supplying a missing part of the answer ("Kurang manis ke?" when the player never said "kurang manis"); offering the answer as a guess or a question ("Teh tarik ke?", "Nak kurang manis ke?") — a question is still saying it out loud, and it is the commonest way this leaks; naming the target item, phrase or action for them; telling them what to do or say ("Jom order.", "Cuba cakap...", "Kamu patut..."); steering an off-topic answer back to the task by naming the task.
+- If the learner asked a QUESTION instead of doing the task, the character simply answers that question the way they really would, in one line, and then leaves the ball with the player — an expectant pause, a "ha?", a look. Answering the question is in character; announcing what the player should have ordered is not.
+- **Open by acknowledging what they DID say**, whatever it was — one word of it is enough, and it is what makes the line sound like a person rather than a machine that heard nothing. If they chatted about football, the character reacts to football; if they asked a question, the character answers it; if they mumbled one word, the character repeats that word back. THEN, and only then, let the character's own need surface in an open question. A reply that ignores what was said and jumps straight to "Hah? Nak apa?" is the machine, not the character.
+- **Do not invent concrete facts, and do not pre-empt the scene.** Your line is played immediately BEFORE the next scripted NPC line, and that scripted line is what actually delivers this character's information — the floor number, the price, the directions, what is on the tray. When the learner has just asked for something, acknowledge and stall rather than answer — "Oh, ya ya. Jap ya." / "Ha, boleh boleh." / "Ha, kejap." Any floor number, time, price, direction, quantity or name you make up will clash with the line the player hears a second later, and they will believe yours. If a specific fact has not already been said aloud in \`npc_prompt\` or \`conversation_history\`, this character does not say it.
+- Do not fall back on one stock brush-off. The reply should sound like THIS character on THIS turn, coloured by what the player actually said and by the persona's mood — a joke, a grumble, a genuine answer, a raised eyebrow. Vary it.
+- Never coach, never grade, never mention scores, language, grammar or "practice", never break character. There is no teacher in this scene.
+- When the answer is wrong, vague, off-task, or a question instead of an answer, react like a real person would — puzzled, asking again, mildly impatient, amused, or simply answering the question they were asked — **without supplying the answer**. Someone who catches only half of what was said asks about the half they caught, in their own words, and waits. Ask, wait, react; leave the gap for the player to fill. Build the question out of the learner's OWN words, never out of the words they were supposed to reach.
+- Every Malay line quoted in these instructions and in \`npc_persona\` is an ILLUSTRATION of a manner, not a line to reuse. Never emit one of them verbatim, and never borrow a noun from one — write a fresh line in this character's voice for this exact turn.
 - **\`npc_reply\` IS WRITTEN ENTIRELY IN NATURAL MALAYSIAN BAHASA MELAYU. This is absolute and applies at LEVEL 1, LEVEL 2 and LEVEL 3 alike, whatever language the coaching is in.** The NPC is a Malaysian speaking to another Malaysian; they would not switch to English.
 - The commonest way this goes wrong is an ENGLISH TAIL: a fine Malay sentence with a cheerful English phrase bolted onto the end. Every clause of \`npc_reply\` — including the last one, including the exclamation — is in Malay. Warm sign-offs go in Malay too: "sekejap ya", "jap ya", "nanti saya bawa", "boleh boleh", "takpe takpe", "jom". Before you emit \`npc_reply\`, reread it word by word; if any run of words in it is an English phrase rather than a single borrowed word, rewrite the whole line in Malay.
 - The ONLY English permitted anywhere in \`npc_reply\` is a single borrowed word Malaysians genuinely say in everyday Malay speech (\`report\`, \`meeting\`, \`ok\`, \`email\`, \`lift\`) sitting inside an otherwise fully Malay sentence. A borrowed word is one word. Two or more English words in a row is an English clause, and an English clause is forbidden.`;
@@ -238,6 +255,155 @@ export function isUsefulUpgrade(u) {
   const tryIt = normaliseTranscript(u.try);
   return Boolean(said) && Boolean(tryIt) && said !== tryIt;
 }
+
+// ---------------------------------------------------------------------------
+// npc_reply: the answer-key leak filter
+// ---------------------------------------------------------------------------
+// The per-turn call grades AND speaks, so it must see `task_goal`,
+// `expected_semantics`, `sample_answers` and `key_concepts` — and a model that
+// has just read the answer key finds it very hard not to say it out loud. The
+// live failure was the NPC completing the player's order for them:
+//
+//   player: "emm... apa ya... teh"  ->  "Eh, teh tarik satu? Kurang manis ke?"
+//
+// The player never said `kurang manis`. That single line hands over the exact
+// words the exercise exists to make them produce, in the NPC's voice, out loud,
+// before the coaching panel has said anything. Offering it as a guess ("Nak
+// kurang manis ke?") is the same defect with a question mark on it.
+//
+// The prompt now forbids all of this at length, and that removed most of it —
+// but "most" is not a guarantee, and this is the one field the player HEARS.
+// So, exactly as with bm_upgrades above: the prompt is a request, and this is
+// the guarantee.
+//
+// The step's own `key_concepts` / `fallback_concepts` ARE the answer-key
+// vocabulary, already authored per step in Bahasa Melayu. A phrase from that
+// vocabulary is a leak when it appears in `npc_reply` but appears neither in
+// what the learner just said nor in what the NPC has already said aloud in
+// this scene. Leaked phrases are excised a CLAUSE at a time, so the rest of
+// the character's reaction survives; if nothing survives, the character's
+// authored re-prompt line is used instead.
+
+/**
+ * Excising a middle clause can leave a dangling connective — "Oh, kasut baru?
+ * Tapi," — so trim trailing/leading joining words and stray punctuation.
+ */
+const DANGLING = /^(?:tapi|tetapi|dan|atau|jadi|lepas tu|kemudian|ha|oh)[\s,;:.!?]*$/i;
+
+function tidyRebuilt(text) {
+  const parts = splitClauses(text).map((c) => c.trim()).filter(Boolean);
+  while (parts.length && DANGLING.test(parts[parts.length - 1].replace(/[\s,;:.!?]+$/, ''))) {
+    parts.pop();
+  }
+  return parts
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,;:.!?])/g, '$1')
+    .replace(/[\s,;]+$/, '')
+    .trim();
+}
+
+/** Clause splitter that keeps the punctuation, so rejoining reads naturally. */
+function splitClauses(text) {
+  return String(text).match(/[^.?!,;]+[.?!,;]*\s*/g) || [String(text)];
+}
+
+/**
+ * Bare function words that appear in some steps' `key_concepts` — office_01's
+ * `cover_me` lists "boleh", "tak boleh" and "tapi" — but which carry no answer
+ * on their own. Banning a one-word conjunction would strip ordinary clauses out
+ * of the NPC's mouth and teach the player nothing, so a phrase that is a SINGLE
+ * word from this list is never treated as a leak. Multi-word phrases stay
+ * banned whatever they are made of: "tak boleh" as a whole is still the answer.
+ */
+const LEAK_STOPWORDS = new Set(
+  (
+    'boleh tak tidak bukan ada nak mahu hendak kena mesti perlu tolong sila ' +
+    'tapi tetapi dan atau pun juga lagi lah kan ke ya ni tu itu ini ' +
+    'di kat ke dari pada untuk dengan dalam atas bawah sini situ sana ' +
+    'saya awak kamu dia kita kami maaf sorry terima kasih ok okey ' +
+    'apa mana macam siapa bila kenapa berapa lepas dah sudah belum je saja sahaja'
+  )
+    .split(/\s+/)
+    .filter(Boolean),
+);
+
+/**
+ * Every answer-key phrase authored for this step — and for the scenario's other
+ * steps too, longest first.
+ *
+ * Scenario-wide, not step-wide, because the leak crosses steps: at mamak_01's
+ * `wrong_order` the NPC offered "Nak kurang manis ke?" to a player who had not
+ * said it, and `kurang manis` is the *previous* step's key concept. The answer
+ * key for this mission is the whole mission's vocabulary.
+ *
+ * @param {object} step the step being scored
+ * @param {object} [scenario] its scenario, if available
+ */
+export function answerKeyPhrases(step, scenario) {
+  const out = [];
+  const steps = Array.isArray(scenario?.steps) && scenario.steps.length ? scenario.steps : [step];
+  for (const st of steps) {
+    if (!st) continue;
+    for (const c of st.key_concepts || []) if (typeof c === 'string') out.push(c);
+    for (const group of st.fallback_concepts || []) {
+      for (const c of group || []) if (typeof c === 'string') out.push(c);
+    }
+  }
+  return [...new Set(out.map((c) => normaliseTranscript(c)).filter(Boolean))]
+    .filter((p) => p.includes(' ') || !LEAK_STOPWORDS.has(p))
+    .sort((a, b) => b.length - a.length);
+}
+
+function containsPhrase(haystackNorm, phraseNorm) {
+  return ` ${haystackNorm} `.includes(` ${phraseNorm} `);
+}
+
+/**
+ * Strip answer-key vocabulary the learner never said out of `npc_reply`.
+ *
+ * @param {string} reply the model's npc_reply
+ * @param {{step?: object, scenario?: object, transcript?: string, conversationHistory?: Array, fallbackLine?: string}} ctx
+ * @returns {{reply: string, leaked: string[]}}
+ */
+export function stripAnswerKeyLeak(reply, ctx = {}) {
+  const { step, scenario, transcript, conversationHistory, fallbackLine } = ctx;
+  const phrases = answerKeyPhrases(step, scenario);
+  if (!phrases.length) return { reply, leaked: [] };
+
+  // Everything already spoken aloud in this scene is fair game to echo: the
+  // learner's own words, and anything the NPC has already said.
+  const spokenParts = [transcript || '', step?.tts_prompt || ''];
+  for (const turn of conversationHistory || []) {
+    if (turn && typeof turn === 'object') {
+      spokenParts.push(turn.npc || '', turn.player || '');
+    }
+  }
+  const spoken = normaliseTranscript(spokenParts.join(' '));
+  const banned = phrases.filter((p) => !containsPhrase(spoken, p));
+  if (!banned.length) return { reply, leaked: [] };
+
+  const leaked = [];
+  const kept = [];
+  for (const clause of splitClauses(reply)) {
+    const norm = normaliseTranscript(clause);
+    const hit = banned.find((p) => containsPhrase(norm, p));
+    if (hit) leaked.push(hit);
+    else kept.push(clause);
+  }
+  if (!leaked.length) return { reply, leaked: [] };
+
+  const rebuilt = tidyRebuilt(kept.join(''));
+  // A rebuilt line must still be a line. Cutting the middle out of "Wayang?
+  // Report tu belum siap ke?" leaves "Wayang? kan?", which is worse than
+  // saying nothing — so anything shorter than three words is discarded in
+  // favour of the character's authored re-prompt.
+  const usable = normaliseTranscript(rebuilt).split(' ').filter(Boolean).length >= 3 ? rebuilt : '';
+  return { reply: usable || fallbackLine || DEFAULT_REPROMPT, leaked };
+}
+
+/** Last-resort in-character re-prompt when a whole reply was answer key. */
+export const DEFAULT_REPROMPT = 'Hah? Macam mana tu? Cuba cakap sekali lagi.';
 
 // ---------------------------------------------------------------------------
 // bm_upgrades: the code-switch filter
@@ -671,6 +837,11 @@ export async function evaluate(input = {}) {
     level: Number(level),
     allowed_code_switch: cfg?.allowed_code_switch,
     scenario_context: scenario?.context,
+    // Character notes for `npc_reply` only. Step-level overrides the scenario
+    // default, exactly like npc_name / voice_id / portrait, so mall_01's L3
+    // hand-off to Makcik changes who is speaking as well as how they sound.
+    npc_name: step?.npc_name || scenario?.npc_name,
+    npc_persona: step?.npc_persona || scenario?.npc_persona || null,
     npc_prompt: step?.tts_prompt,
     task_goal: step?.task_en,
     expected_semantics: step?.expected_semantics || [],
@@ -695,7 +866,21 @@ export async function evaluate(input = {}) {
     return fallbackEvaluate({ step, transcript, level, reason: 'llm_failed' });
   }
   noteEvaluatorSuccess();
-  return { ...ok, source: 'llm', fallback: false };
+
+  // The prompt forbids the NPC from speaking the answer key; this guarantees it.
+  const { reply, leaked } = stripAnswerKeyLeak(ok.npc_reply, {
+    step,
+    scenario,
+    transcript,
+    conversationHistory,
+    fallbackLine: step?.npc_reprompt || scenario?.npc_reprompt,
+  });
+  if (leaked.length) {
+    console.warn(
+      `[evaluator] npc_reply leaked answer-key phrase(s) ${JSON.stringify(leaked)} — excised`,
+    );
+  }
+  return { ...ok, npc_reply: reply, source: 'llm', fallback: false };
 }
 
 /**
