@@ -30,13 +30,12 @@ let lastScenarioId = null;
 let recorder = null;
 let npcRestState = 'idle';
 let lastSummary = null;
-let armTimer = 0;
 let errorAction = null; // what the error panel's "Cuba lagi" should do
 let submitting = false; // guards the STOP-click / auto-stop race
 // True from the instant the player asks for the mic until the clip is captured.
 // `recorder.isRecording()` only flips true several awaits into start(), and the
 // cancelled speak() re-emits ready-to-record within a microtask of the stop —
-// so the flag, not the recorder, is what makes armMic a no-op on barge-in.
+// so the flag, not the recorder, is what makes offerMic a no-op on barge-in.
 let micHeld = false;
 
 /**
@@ -79,7 +78,6 @@ function handleEvent(type, payload = {}) {
       break;
 
     case 'step':
-      cancelArm();
       // A new step: the previous turn's transcript can no longer be redone.
       ui.setTranscriptRetry('off');
       // The previous turn's score and transcript stay up while the next prompt
@@ -148,7 +146,7 @@ function handleEvent(type, payload = {}) {
       break;
 
     case 'ready-to-record':
-      armMic(payload.reason);
+      offerMic(payload.reason);
       break;
 
     case 'processing':
@@ -189,7 +187,6 @@ function handleEvent(type, payload = {}) {
       break;
 
     case 'error':
-      cancelArm();
       stopRecordingSilently();
       ui.setPipeline(null);
       ui.setMic('wait', 'Tekan “Cuba lagi”');
@@ -215,7 +212,6 @@ function handleEvent(type, payload = {}) {
       break;
 
     case 'aborted':
-      cancelArm();
       stopRecordingSilently();
       break;
 
@@ -239,18 +235,34 @@ function ensureRecorder() {
   return recorder;
 }
 
-function cancelArm() {
-  clearTimeout(armTimer);
-  armTimer = 0;
-}
+/** Phase copy for the moment the mic is handed over, by why we got here. */
+const TURN_PHASE = {
+  'no-input': 'Tak dengar apa-apa — tekan CAKAP dan cuba lagi. Tiada penalti.',
+  retry: 'Cuba sekali lagi — tekan CAKAP bila anda sedia.',
+  'user-retry': 'Cuba sekali lagi — tekan CAKAP bila anda sedia.',
+  'after-error': 'Tekan CAKAP untuk cuba giliran ini sekali lagi.',
+};
 
-/** Auto-arm shortly after the audio ends; a manual press also works. */
-function armMic(reason) {
-  cancelArm();
+/**
+ * Hand the microphone over and STOP.
+ *
+ * The mic used to arm itself ~350 ms after the NPC stopped talking. A playtest
+ * killed it: stopping early yields a clip too short to transcribe, which is a
+ * free retry, which re-armed the mic, which started recording again — a loop
+ * the player could not escape, and one that reads on a screen recording as the
+ * app fighting its user. Recording now begins on a deliberate press, and on
+ * nothing else.
+ *
+ * The cost of that is real: a first-time player can sit in silence not knowing
+ * it is their turn. That is exactly what `ui.setTurnCue` exists to prevent, so
+ * the two must always be changed together — a `ready` mic without the cue is
+ * the failure mode this whole change created.
+ */
+function offerMic(reason) {
   // Barge-in: the cancelled `speak` still emits ready-to-record, and the player
-  // is already recording. Re-arming here would overwrite the phase text and
+  // is already recording. Re-offering here would overwrite the phase text and
   // leave the button reading CAKAP while the mic is live.
-  if (micHeld || recorder?.isRecording()) return;
+  if (micBusy()) return;
   if (!isRecordingSupported()) {
     handleEvent('error', {
       message: 'This browser cannot record audio. Try Chrome or Edge on a desktop, over https or localhost.',
@@ -258,14 +270,13 @@ function armMic(reason) {
     });
     return;
   }
-  ui.setMic('ready', 'Bersedia… mic akan buka');
-  ui.setPhase(reason === 'retry' ? 'Cuba sekali lagi — cakap bila sedia.' : 'Giliran anda.');
+  ui.setMic('ready', 'Tekan CAKAP untuk mula');
+  ui.setPhase(TURN_PHASE[reason] || 'Giliran anda — tekan CAKAP dan jawab.');
+  ui.setTurnCue(true);
   ui.setTranscriptRetry(ui.el.transcriptPanel.hidden ? 'off' : 'on');
-  armTimer = setTimeout(() => startRecording(), 350);
 }
 
 async function startRecording() {
-  cancelArm();
   const rec = ensureRecorder();
   if (micHeld || rec.isRecording()) return;
   micHeld = true;
@@ -321,7 +332,7 @@ async function stopAndSubmit() {
     ui.showTranscript('');
     handleEvent('no-input', { message: NO_INPUT_MESSAGE });
     submitting = false;
-    armMic('no-input');
+    offerMic('no-input');
     return;
   }
   await engine.submitRecording(captured.blob, captured.mimeType);
@@ -345,7 +356,6 @@ function stopRecordingSilently() {
  * some browsers, a fresh permission prompt mid-conversation.
  */
 function disposeRecorder() {
-  cancelArm();
   visualiser.stop();
   submitting = false;
   micHeld = false;
@@ -414,7 +424,6 @@ ui.el.verdictSpeakBtn.addEventListener('click', () => {
 });
 
 function goHome() {
-  cancelArm();
   // Quitting a mission releases the mic too — the home screen never records.
   disposeRecorder();
   engine.abort();

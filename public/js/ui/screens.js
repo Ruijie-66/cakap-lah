@@ -72,6 +72,7 @@ export function createUI() {
     timer: $('timer'),
     viz: $('viz'),
     vizCut: $('vizCut'),
+    vizTurn: $('vizTurn'),
     pipeline: $('pipeline'),
 
     transcriptPanel: $('transcriptPanel'),
@@ -294,10 +295,13 @@ export function createUI() {
       // The recording state is the loudest thing in the app: the dock, the
       // visualiser frame and the REC badge all key off this one attribute.
       document.body.dataset.mic = mode;
-      // The barge-in dressing only ever makes sense on top of `ready`. Any
-      // other mode clears it, so a state change can never leave "potong je"
-      // shouting at a dead or recording mic.
-      if (mode !== 'ready') document.body.dataset.barge = 'off';
+      // The barge-in and your-turn dressings only ever make sense on top of
+      // `ready`. Any other mode clears both, so a state change can never leave
+      // "potong je" or "GILIRAN ANDA" shouting at a dead or recording mic.
+      if (mode !== 'ready') {
+        document.body.dataset.barge = 'off';
+        document.body.dataset.turn = 'off';
+      }
       // Replay and "Dengar coach" push TTS out of the speakers. With the mic
       // open that is the NPC's voice bleeding into the player's answer —
       // echoCancellation usually saves it on a laptop, but not at demo volume
@@ -314,7 +318,10 @@ export function createUI() {
       }
       el.micHint.textContent = cfg.hint;
       el.micHint.classList.toggle('live', mode === 'recording');
-      if (mode !== 'ready') el.micHint.classList.remove('cut');
+      if (mode !== 'ready') {
+        el.micHint.classList.remove('cut');
+        el.micHint.classList.remove('turn');
+      }
     },
 
     /**
@@ -330,6 +337,8 @@ export function createUI() {
     setBargeIn(on) {
       const live = !!on && el.micBtn.dataset.mode === 'ready' && !el.micBtn.disabled;
       document.body.dataset.barge = live ? 'on' : 'off';
+      // The NPC is talking — it is emphatically NOT the player's turn yet.
+      if (live) ui.setTurnCue(false);
       el.micHint.classList.toggle('cut', live);
       // The "tak payah tunggu dia habis cakap" sub-line is a one-off: it
       // teaches the mechanic the first time an NPC speaks, then gets out of
@@ -338,6 +347,35 @@ export function createUI() {
         if (bargeSeen) el.vizCut.dataset.seen = '1';
         bargeSeen = true;
       }
+    },
+
+    /**
+     * "It is your turn — press CAKAP." The mic no longer arms itself, so this
+     * is the ONLY thing standing between a first-time player and a silent,
+     * apparently-broken screen. It has to be impossible to miss.
+     *
+     * Deliberately the same family as the barge-in dressing — amber, the same
+     * arrow pointing back at the mic, the same closing instruction ("tekan
+     * CAKAP") — because the answer to both moments is the same button. Just as
+     * deliberately NOT the same look:
+     *   barge-in  · dashed ring collapsing INWARD, small line, "Potong je" —
+     *               a permission, offered while someone else is talking.
+     *   your turn · SOLID rings pushing outward, the strip given over to
+     *               "GILIRAN ANDA" at full display size, plus a badge in the
+     *               phase row where RECORDING lives — a summons, and the only
+     *               thing happening on screen.
+     * Neither borrows the recording language: no neon pink, no REC badge, no
+     * STOP glyph. Recording stays the single loudest state.
+     *
+     * Call AFTER setMic('ready', …) — setMic clears it on every other mode.
+     * @param {boolean} on
+     */
+    setTurnCue(on) {
+      const live = !!on && el.micBtn.dataset.mode === 'ready' && !el.micBtn.disabled;
+      document.body.dataset.turn = live ? 'on' : 'off';
+      if (live) document.body.dataset.barge = 'off';
+      el.micHint.classList.toggle('turn', live);
+      if (live) el.micHint.classList.remove('cut');
     },
 
     setTimer(ms) {

@@ -94,8 +94,9 @@
   <div class="dock">
     <div class="dock-inner">
       <div class="phase-row">
-        <div class="phase" id="phaseLabel">Bersedia…</div>
+        <div class="phase" id="phaseLabel" role="status" aria-live="polite">Bersedia…</div>
         <div class="rec-badge" aria-hidden="true"><i></i><span>RECORDING</span></div>
+        <div class="turn-badge" aria-hidden="true"><i></i><span>GILIRAN ANDA</span></div>
       </div>
 
       <div class="mic-row">
@@ -103,6 +104,8 @@
           <span class="mic-ring ring-1" aria-hidden="true"></span>
           <span class="mic-ring ring-2" aria-hidden="true"></span>
           <span class="mic-cut" aria-hidden="true"></span>
+          <span class="mic-turn turn-1" aria-hidden="true"></span>
+          <span class="mic-turn turn-2" aria-hidden="true"></span>
           <button class="mic-btn" id="micBtn" type="button" disabled>
             <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect class="mic-body" x="9" y="2.5" width="6" height="11" rx="3" />
@@ -122,6 +125,11 @@
               <b class="viz-cut-arrow">◀</b>
               <b class="viz-cut-line">Potong je — tekan CAKAP</b>
               <i class="viz-cut-sub" id="vizCutSub">tak payah tunggu dia habis cakap</i>
+            </span>
+            <span class="viz-turn" id="vizTurn" aria-hidden="true">
+              <b class="viz-turn-arrow">◀</b>
+              <b class="viz-turn-line">GILIRAN ANDA</b>
+              <i class="viz-turn-sub">tekan CAKAP, lepas tu cakap</i>
             </span>
           </div>
           <div class="meta">
