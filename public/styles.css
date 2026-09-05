@@ -978,6 +978,105 @@ body[data-mic="recording"] .viz-wrap {
 body[data-mic="recording"] .viz-idle,
 body[data-mic="busy"] .viz-idle { opacity: 0; }
 
+/* ── "You may cut in RIGHT NOW" ────────────────────────────────────────
+ * Barge-in works during every narrator/NPC line, but a plain amber READY
+ * mic looks exactly like every other idle moment, so testers never tried
+ * it. `body[data-barge="on"]` is set ONLY alongside data-mic="ready" (see
+ * setMic/setBargeIn) and gives that moment its own identity:
+ *   · a ring that collapses INWARD on the mic — the deliberate opposite of
+ *     the recording rings, which fire outward. Amber, never neon pink.
+ *   · the dormant visualiser strip turns into a legible instruction that
+ *     points back at the mic, tying "he is talking" to "you can press".
+ * Nothing here borrows the recording language: no pink, no REC badge, no
+ * STOP glyph. Colour + copy carry the state; motion is garnish only.
+ */
+body[data-barge="on"] .mic-btn[data-mode="ready"] {
+  border-color: #fff2d8;
+  box-shadow:
+    0 0 0 4px rgba(255, 179, 64, 0.28),
+    0 0 34px rgba(255, 179, 64, 0.45),
+    0 14px 34px rgba(255, 140, 40, 0.3);
+  animation: none;
+}
+.mic-cut {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px dashed var(--amber);
+  opacity: 0;
+  pointer-events: none;
+}
+body[data-barge="on"] .mic-cut { animation: cut-in 2s cubic-bezier(0.25, 0.8, 0.4, 1) infinite; }
+@keyframes cut-in {
+  0%   { opacity: 0;    transform: scale(1.42) rotate(0deg); }
+  35%  { opacity: 0.85; }
+  100% { opacity: 0;    transform: scale(0.94) rotate(40deg); }
+}
+
+.viz-cut {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 34px;
+  text-align: center;
+  pointer-events: none;
+  /* The strip is also the visualiser's canvas. A soft scrim keeps the copy
+   * legible over any residual waveform pixels. */
+  background: radial-gradient(ellipse at 50% 50%, rgba(12, 17, 26, 0.86) 0%, rgba(12, 17, 26, 0.72) 55%, rgba(12, 17, 26, 0) 85%);
+}
+body[data-barge="on"] .viz-cut { display: flex; }
+body[data-barge="on"] .viz-idle { opacity: 0; }
+body[data-barge="on"] .viz-wrap {
+  border-color: rgba(255, 179, 64, 0.85);
+  background: linear-gradient(180deg, rgba(255, 179, 64, 0.2), rgba(255, 140, 40, 0.07) 70%, rgba(16, 22, 33, 0.9));
+  box-shadow: 0 0 0 1px rgba(255, 179, 64, 0.3), 0 0 30px rgba(255, 179, 64, 0.2);
+}
+/* Parked at the strip's left edge, nudging back toward the mic: this is the
+ * one element that ties "he is talking" to "so press THAT". */
+.viz-cut-arrow {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  margin-top: -13px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--amber);
+  animation: cut-nudge 1.15s ease-in-out infinite;
+}
+.viz-cut-line {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: #ffd68f;
+  text-shadow: 0 2px 10px rgba(255, 140, 40, 0.35);
+}
+.viz-cut-sub {
+  font-style: normal;
+  font-size: 13px;
+  color: #e6d3b4;
+  letter-spacing: 0.02em;
+}
+.viz-cut[data-seen="1"] .viz-cut-sub { display: none; }
+@keyframes cut-nudge {
+  0%, 100% { transform: translateX(3px); opacity: 0.6; }
+  50%      { transform: translateX(-3px); opacity: 1; }
+}
+
+.dock .meta .cut { color: var(--amber); font-weight: 800; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The state must read without motion: the dashed ring parks at full
+   * opacity on the mic and the arrow stops nudging. Colour and copy do
+   * all of the work. */
+  body[data-barge="on"] .mic-cut { animation: none; opacity: 0.9; transform: scale(1.16); }
+  .viz-cut-arrow { animation: none; opacity: 1; }
+}
+
 .dock .meta {
   display: flex;
   justify-content: space-between;

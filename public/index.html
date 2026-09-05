@@ -102,6 +102,7 @@
         <div class="mic-holder">
           <span class="mic-ring ring-1" aria-hidden="true"></span>
           <span class="mic-ring ring-2" aria-hidden="true"></span>
+          <span class="mic-cut" aria-hidden="true"></span>
           <button class="mic-btn" id="micBtn" type="button" disabled>
             <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect class="mic-body" x="9" y="2.5" width="6" height="11" rx="3" />
@@ -117,6 +118,11 @@
           <div class="viz-wrap">
             <canvas id="viz" aria-hidden="true"></canvas>
             <span class="viz-idle" id="vizIdle">tekan mic bila anda sedia bercakap</span>
+            <span class="viz-cut" id="vizCut" aria-hidden="true">
+              <b class="viz-cut-arrow">◀</b>
+              <b class="viz-cut-line">Potong je — tekan CAKAP</b>
+              <i class="viz-cut-sub" id="vizCutSub">tak payah tunggu dia habis cakap</i>
+            </span>
           </div>
           <div class="meta">
             <span id="micHint">Tunggu…</span>

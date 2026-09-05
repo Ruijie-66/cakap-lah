@@ -118,7 +118,13 @@ function handleEvent(type, payload = {}) {
               ? 'Coach bercakap…'
               : `${ui.el.npcName.textContent || 'NPC'} bercakap…`,
         );
-        if (payload.who !== 'coach') ui.setMic('ready', 'Tekan untuk potong & cakap');
+        if (payload.who !== 'coach') {
+          ui.setMic('ready', 'Boleh potong — tekan CAKAP');
+          // Barge-in is live for exactly as long as this line plays. Give the
+          // moment its own look so the player can see the mic is open, rather
+          // than reading a 13px hint under a mic that looks idle.
+          ui.setBargeIn(true);
+        }
       }
       ui.setPipeline(payload.who === 'npc' ? 'tts' : null);
       break;
@@ -126,6 +132,9 @@ function handleEvent(type, payload = {}) {
     case 'speak-end':
       ui.setPortraitState(npcRestState);
       ui.setPipeline(null);
+      // The line is over: nothing left to cut into. Never touch the mic mode
+      // here — micBusy() may own it mid-barge-in.
+      ui.setBargeIn(false);
       // The intro is scene-setting, said once. Left up it costs ~62px of
       // vertical space for the whole mission, which pushes the score chips
       // below a 720p fold. Clear it as soon as it has actually been HEARD; if

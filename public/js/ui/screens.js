@@ -32,6 +32,9 @@ function publishMicLevel(level) {
 }
 
 export function createUI() {
+  /** The barge-in coach line is shown once per session, then trimmed. */
+  let bargeSeen = false;
+
   const el = {
     screens: {
       home: $('screen-home'),
@@ -68,6 +71,7 @@ export function createUI() {
     micLabel: $('micLabel'),
     timer: $('timer'),
     viz: $('viz'),
+    vizCut: $('vizCut'),
     pipeline: $('pipeline'),
 
     transcriptPanel: $('transcriptPanel'),
@@ -290,6 +294,10 @@ export function createUI() {
       // The recording state is the loudest thing in the app: the dock, the
       // visualiser frame and the REC badge all key off this one attribute.
       document.body.dataset.mic = mode;
+      // The barge-in dressing only ever makes sense on top of `ready`. Any
+      // other mode clears it, so a state change can never leave "potong je"
+      // shouting at a dead or recording mic.
+      if (mode !== 'ready') document.body.dataset.barge = 'off';
       // Replay and "Dengar coach" push TTS out of the speakers. With the mic
       // open that is the NPC's voice bleeding into the player's answer —
       // echoCancellation usually saves it on a laptop, but not at demo volume
@@ -306,6 +314,30 @@ export function createUI() {
       }
       el.micHint.textContent = cfg.hint;
       el.micHint.classList.toggle('live', mode === 'recording');
+      if (mode !== 'ready') el.micHint.classList.remove('cut');
+    },
+
+    /**
+     * "You may cut in right now." Barge-in is live during every narrator and
+     * NPC line, but a plain amber READY mic is indistinguishable from every
+     * other idle moment — testers reported the button looked off. This is the
+     * only state that gets its own dressing on top of `ready`; it is never
+     * pink and never borrows the recording language.
+     *
+     * Call AFTER setMic('ready', …) — setMic clears it on every other mode.
+     * @param {boolean} on
+     */
+    setBargeIn(on) {
+      const live = !!on && el.micBtn.dataset.mode === 'ready' && !el.micBtn.disabled;
+      document.body.dataset.barge = live ? 'on' : 'off';
+      el.micHint.classList.toggle('cut', live);
+      // The "tak payah tunggu dia habis cakap" sub-line is a one-off: it
+      // teaches the mechanic the first time an NPC speaks, then gets out of
+      // the way for the rest of the session.
+      if (live && el.vizCut) {
+        if (bargeSeen) el.vizCut.dataset.seen = '1';
+        bargeSeen = true;
+      }
     },
 
     setTimer(ms) {
