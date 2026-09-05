@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "probe": "node scripts/probe.js"
+    "probe": "node scripts/probe.js",
+    "test": "node --test"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

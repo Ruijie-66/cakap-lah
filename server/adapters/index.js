@@ -8,6 +8,7 @@
 import { MOCK } from '../config.js';
 import * as revolab from './revolab.js';
 import * as mock from './mock.js';
+import * as evaluator from './evaluator.js';
 
 /**
  * @param {import('express').Request} req
@@ -22,7 +23,7 @@ export function isMockRequest(req) {
 
 /**
  * @param {import('express').Request} req
- * @param {'stt'|'tts'} route
+ * @param {'stt'|'tts'|'eval'|'json'} route
  * @returns {boolean} whether this request should take the forced-error path
  */
 export function isForcedFailure(req, route) {
@@ -35,4 +36,25 @@ export function isForcedFailure(req, route) {
  */
 export function getAdapter(req) {
   return isMockRequest(req) ? mock : revolab;
+}
+
+/**
+ * Same seam as getAdapter(), for the LLM evaluator/summariser.
+ * @param {import('express').Request} req
+ * @returns {{evaluate: Function, summarise: Function}}
+ */
+export function getEvaluator(req) {
+  return isMockRequest(req) ? mock : evaluator;
+}
+
+/**
+ * Forced-failure flags the evaluator routes pass straight into the adapter:
+ *   ?fail=eval -> upstream error   ?fail=json -> malformed model output
+ * @param {import('express').Request} req
+ */
+export function evaluatorFailureFlags(req) {
+  return {
+    forceUpstreamError: isForcedFailure(req, 'eval'),
+    forceMalformed: isForcedFailure(req, 'json'),
+  };
 }

@@ -1,0 +1,113 @@
+{
+  "id": "office_01",
+  "title": "Office Panic",
+  "order": 3,
+  "badge": "Survived the Boss",
+  "context": "Your manager stops by your desk. The report from yesterday is not finished.",
+
+  "npc_name": "Kak Ana",
+  "voice_id": "nur-b184422b",
+  "scene": "office",
+  "portrait": "kak-ana",
+
+  "intro": {
+    "text": "Pagi Isnin. Anda baru sampai pejabat, kopi pun belum habis. Kak Ana berhenti depan meja anda.",
+    "voice_id": "salina-d3e1a70d"
+  },
+
+  "levels": {
+    "1": { "speed": 0.85, "hint": "en",   "allowed_code_switch": "beginner" },
+    "2": { "speed": 1.0,  "hint": "ms",   "allowed_code_switch": "intermediate" },
+    "3": { "speed": 1.0,  "hint": "none", "allowed_code_switch": "advanced" }
+  },
+
+  "steps": [
+    {
+      "id": "status",
+      "levels": [1, 2, 3],
+      "tts_prompt": "Wei, report semalam dah siap ke?",
+      "task_en": "It is not finished. Say so honestly, say where you are with it, and say when you will send it.",
+      "task_ms": "Report belum siap. Beritahu dengan jujur, terangkan sampai mana, dan bagitahu bila anda akan hantar.",
+      "expected_semantics": [
+        "states that the report is not finished",
+        "gives some sense of progress or what is left",
+        "commits to when it will be delivered"
+      ],
+      "key_concepts": ["belum siap", "tengah buat", "petang ni", "hantar"],
+      "sample_answers": [
+        "Belum siap lagi. Saya tengah buat sekarang, petang ni saya hantar.",
+        "Maaf kak, belum habis. Tinggal sikit je, nanti petang saya email.",
+        "Belum lagi kak. Saya dah buat separuh, hari ni juga saya siapkan.",
+        "Sorry kak, tak sempat semalam. Saya sambung pagi ni, petang ni siap."
+      ],
+      "fallback_concepts": [
+        ["belum siap", "belum habis", "belum lagi", "tak sempat", "not yet"],
+        ["tengah buat", "sambung", "dah separuh", "tinggal sikit", "sedang"],
+        ["petang ni", "hari ni", "esok", "pukul", "nanti", "hantar", "email"]
+      ],
+      "retry_hint": "Cakap tiga perkara: belum siap, sampai mana anda dah buat, dan bila anda akan hantar.",
+      "npc_states": { "success": "idle", "partial": "idle", "retry": "annoyed" },
+      "branches": { "success": "pin_down", "partial": "pin_down", "retry": "status" }
+    },
+
+    {
+      "id": "pin_down",
+      "levels": [1, 2, 3],
+      "tts_prompt": "Petang ni tu pukul berapa? Saya ada meeting pukul empat, kena bawa report tu.",
+      "task_en": "She needs a specific time. Give her one — and make sure it works with her 4pm meeting.",
+      "task_ms": "Dia perlukan masa yang tepat. Bagi satu masa — dan pastikan ia sempat sebelum meeting pukul empat dia.",
+      "expected_semantics": [
+        "gives a specific time rather than a vague one",
+        "the time given is before the 4pm meeting",
+        "commits clearly instead of hedging"
+      ],
+      "key_concepts": ["sebelum pukul", "pukul tiga", "pukul dua", "hantar", "sempat"],
+      "sample_answers": [
+        "Boleh, sebelum pukul tiga saya hantar.",
+        "Pukul dua setengah kak, sempat lah untuk meeting.",
+        "Saya hantar sebelum pukul tiga, jadi kak ada masa nak baca dulu.",
+        "Confirm sebelum pukul tiga kak, saya email terus."
+      ],
+      "fallback_concepts": [
+        ["pukul satu", "pukul dua", "pukul tiga", "sebelum pukul", "tengah hari", "lunch"],
+        ["hantar", "email", "siap", "bagi", "sempat"]
+      ],
+      "retry_hint": "Bagi satu masa yang tepat, dan pastikan ia sebelum pukul empat.",
+      "npc_states": { "success": "pleased", "partial": "idle", "retry": "annoyed" },
+      "branches": { "success": "cover_me", "partial": "cover_me", "retry": "pin_down" }
+    },
+
+    {
+      "id": "cover_me",
+      "levels": [3],
+      "tts_prompt": "Okay. Eh, satu lagi — client call pukul sebelas ni saya tak boleh masuk. Boleh tolong ambil alih tak?",
+      "task_en": "You already have a full morning. Either accept and say what you will drop, or decline and offer another way to help.",
+      "task_ms": "Pagi anda dah padat. Sama ada terima dan beritahu apa yang anda tangguh, atau tolak dan tawarkan cara lain untuk membantu.",
+      "expected_semantics": [
+        "gives a clear answer — accepts or declines rather than staying vague",
+        "acknowledges the conflict with the report deadline",
+        "offers something constructive: a trade-off, an alternative, or another person"
+      ],
+      "key_concepts": ["boleh", "tak boleh", "report", "tapi", "macam mana kalau"],
+      "sample_answers": [
+        "Boleh kak, tapi kalau macam tu report tu saya hantar pukul empat lah ya.",
+        "Aduh kak, kalau saya masuk call tu report lambat sikit. Boleh minta Aiman ganti?",
+        "Boleh je, tapi saya kena tangguh report sampai lepas lunch.",
+        "Saya rasa tak sempat kak. Macam mana kalau saya hantar nota untuk kak guna dalam call?"
+      ],
+      "fallback_concepts": [
+        ["boleh", "tak boleh", "tak sempat", "ok kak", "saya rasa"],
+        ["report", "deadline", "lambat", "tangguh", "pukul"],
+        ["tapi", "kalau", "macam mana kalau", "minta", "ganti", "tolong"]
+      ],
+      "retry_hint": "Bagi jawapan yang jelas — terima atau tolak — dan cakap kesannya pada report tadi.",
+      "npc_states": { "success": "pleased", "partial": "idle", "retry": "idle" },
+      "branches": { "success": "__complete__", "partial": "__complete__", "retry": "cover_me" }
+    }
+  ],
+
+  "complete": {
+    "npc_line": "Okay, saya pegang janji ni tau. Jangan esok pula.",
+    "voice_id": "nur-b184422b"
+  }
+}

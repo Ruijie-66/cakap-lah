@@ -7,6 +7,9 @@ import express from 'express';
 import { PORT, MOCK } from './config.js';
 import sttRouter from './routes/stt.js';
 import ttsRouter from './routes/tts.js';
+import scenariosRouter from './routes/scenarios.js';
+import evaluateRouter from './routes/evaluate.js';
+import summariseRouter from './routes/summarise.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -24,6 +27,9 @@ app.get('/api/health', (req, res) => {
 //   app.use(evaluateRouter);
 app.use(sttRouter);
 app.use(ttsRouter);
+app.use(scenariosRouter);
+app.use(evaluateRouter);
+app.use(summariseRouter);
 
 app.use(express.static(publicDir));
 

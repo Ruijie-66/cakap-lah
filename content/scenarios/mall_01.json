@@ -1,0 +1,119 @@
+{
+  "id": "mall_01",
+  "title": "Mall Rescue",
+  "order": 2,
+  "badge": "Tak Sesat Lagi",
+  "context": "You are in a shopping mall and you cannot find the food court. Ask someone.",
+
+  "npc_name": "Abang Guard",
+  "voice_id": "ali-13002bfa",
+  "scene": "mall",
+  "portrait": "abang-guard",
+
+  "intro": {
+    "text": "Anda di dalam sebuah mall yang besar. Dah pusing dua kali, food court masih tak jumpa. Ada seorang abang guard berdiri dekat eskalator.",
+    "voice_id": "salina-d3e1a70d"
+  },
+
+  "levels": {
+    "1": { "speed": 0.85, "hint": "en",   "allowed_code_switch": "beginner" },
+    "2": { "speed": 1.0,  "hint": "ms",   "allowed_code_switch": "intermediate" },
+    "3": { "speed": 1.0,  "hint": "none", "allowed_code_switch": "advanced" }
+  },
+
+  "steps": [
+    {
+      "id": "ask",
+      "levels": [1, 2, 3],
+      "tts_prompt": "Ya? Boleh saya tolong?",
+      "task_en": "Ask him politely where the food court is.",
+      "task_ms": "Tanya dia dengan sopan di mana food court.",
+      "expected_semantics": [
+        "asks for the location of the food court",
+        "frames it as a question rather than a demand",
+        "uses a polite opener or softener"
+      ],
+      "key_concepts": ["food court", "kat mana", "macam mana nak pergi", "maaf"],
+      "sample_answers": [
+        "Maaf bang, food court kat mana ya?",
+        "Bang, macam mana nak pergi ke food court?",
+        "Excuse me, saya nak cari food court. Kat tingkat berapa ya?",
+        "Tumpang tanya bang, food court sebelah mana?"
+      ],
+      "fallback_concepts": [
+        ["food court", "tempat makan", "medan selera"],
+        ["kat mana", "di mana", "macam mana", "tingkat berapa", "sebelah mana", "nak cari"]
+      ],
+      "retry_hint": "Tanya di mana food court itu — cuba mula dengan 'Maaf bang' atau 'Tumpang tanya'.",
+      "npc_states": { "success": "pleased", "partial": "idle", "retry": "idle" },
+      "branches": { "success": "confirm", "partial": "confirm", "retry": "ask" }
+    },
+
+    {
+      "id": "confirm",
+      "levels": [1, 2, 3],
+      "tts_prompt": "Oh, food court kat tingkat empat. Naik eskalator ni sampai atas, lepas tu belok kiri. Ada papan tanda besar, tak boleh miss punya.",
+      "task_en": "Repeat the directions back to him to make sure you understood — floor, escalator, which way to turn.",
+      "task_ms": "Ulang semula arah tadi untuk pastikan anda faham — tingkat, eskalator, belok mana.",
+      "expected_semantics": [
+        "reads the directions back rather than just saying yes",
+        "mentions the fourth floor",
+        "mentions taking the escalator up",
+        "mentions turning left"
+      ],
+      "key_concepts": ["tingkat empat", "eskalator", "belok kiri", "atas"],
+      "sample_answers": [
+        "Jadi naik eskalator sampai tingkat empat, lepas tu belok kiri?",
+        "Okay, tingkat empat, naik eskalator, belok kiri ya?",
+        "Naik atas tingkat empat, keluar eskalator belok kiri. Betul tak bang?",
+        "Tingkat empat, belok kiri lepas eskalator. Terima kasih bang."
+      ],
+      "fallback_concepts": [
+        ["tingkat empat", "tingkat 4", "level empat", "floor empat", "atas"],
+        ["eskalator", "escalator", "naik"],
+        ["belok kiri", "kiri", "left"]
+      ],
+      "retry_hint": "Sebut semula tiga perkara: tingkat berapa, naik apa, dan belok ke mana.",
+      "npc_states": { "success": "pleased", "partial": "idle", "retry": "idle" },
+      "branches": { "success": "give_directions", "partial": "give_directions", "retry": "confirm" }
+    },
+
+    {
+      "id": "give_directions",
+      "levels": [3],
+      "npc_name": "Makcik",
+      "voice_id": "nur-b184422b",
+      "portrait": "makcik",
+      "tts_prompt": "Dik, dik. Sorry ya. Makcik nak tanya, food court kat mana ek? Makcik dah pusing-pusing tak jumpa.",
+      "task_en": "Now someone is asking you. Give her the directions you just learned.",
+      "task_ms": "Sekarang orang pula tanya anda. Bagi arah yang anda baru dapat tadi.",
+      "expected_semantics": [
+        "gives usable directions to the food court",
+        "mentions the fourth floor",
+        "mentions the escalator",
+        "mentions turning left",
+        "sequences the steps so they can be followed in order"
+      ],
+      "key_concepts": ["tingkat empat", "eskalator", "belok kiri", "lepas tu"],
+      "sample_answers": [
+        "Makcik naik eskalator ni sampai tingkat empat, lepas tu belok kiri. Ada papan tanda besar.",
+        "Tingkat empat makcik. Naik eskalator sana, keluar je belok kiri.",
+        "Senang je makcik — naik eskalator ni, tingkat empat, kemudian belok kiri terus nampak.",
+        "Makcik pergi tingkat empat naik eskalator tu, lepas tu kiri."
+      ],
+      "fallback_concepts": [
+        ["tingkat empat", "tingkat 4", "level empat", "atas"],
+        ["eskalator", "escalator", "naik"],
+        ["belok kiri", "kiri", "left"]
+      ],
+      "retry_hint": "Bagi arah ikut turutan — naik apa dulu, ke tingkat berapa, lepas tu belok mana.",
+      "npc_states": { "success": "pleased", "partial": "idle", "retry": "idle" },
+      "branches": { "success": "__complete__", "partial": "__complete__", "retry": "give_directions" }
+    }
+  ],
+
+  "complete": {
+    "npc_line": "Terima kasih ya dik! Baik betul orang muda zaman sekarang.",
+    "voice_id": "nur-b184422b"
+  }
+}
