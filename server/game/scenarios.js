@@ -23,6 +23,15 @@ const SCENARIO_DIR = path.join(__dirname, '..', '..', 'content', 'scenarios');
  * lines they are meant to produce. `npc_reprompt` is the server-side safety
  * net used when a generated line has to be discarded, and is likewise never
  * something the client chooses to say.
+ *
+ * `world_facts` is the same class again: the concrete truths of the scene
+ * (the floor, the time, whose report it is), written so the improvised
+ * `npc_reply` cannot contradict the scripted line that follows it. It is
+ * authored at scenario level — where the browser-safe projection below is an
+ * explicit allowlist and so never copies it — but it is listed here too, so
+ * that a per-step override, the day someone writes one, is stripped as well.
+ * Half of it is the answer key restated as fact ("tingkat empat"), so it must
+ * never reach a player who is about to be asked to say exactly that.
  */
 export const ANSWER_KEY_FIELDS = Object.freeze([
   'sample_answers',
@@ -31,6 +40,7 @@ export const ANSWER_KEY_FIELDS = Object.freeze([
   'key_concepts',
   'npc_persona',
   'npc_reprompt',
+  'world_facts',
 ]);
 
 function loadAll() {

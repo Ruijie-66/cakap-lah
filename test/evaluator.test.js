@@ -15,6 +15,7 @@ import {
   withCoachingLanguage,
   isUsefulUpgrade,
   answerKeyPhrases,
+  bannedPhrasesFor,
   stripAnswerKeyLeak,
   DEFAULT_REPROMPT,
   filterUpgrades,
@@ -437,6 +438,107 @@ test('npc_persona is stripped from everything the browser can see', () => {
   }
 });
 
+test('every scenario states the world facts its scripted lines assert', () => {
+  const required = {
+    // mall_01's whole mission is directions, so its facts ARE the directions.
+    mall_01: ['tingkat empat', 'eskalator', 'belok kiri', 'papan tanda'],
+    mamak_01: ['Milo'],
+    office_01: ['pukul empat'],
+  };
+  for (const [id, needles] of Object.entries(required)) {
+    const facts = getScenario(id).world_facts;
+    assert.ok(Array.isArray(facts) && facts.length >= 3, `${id} needs world_facts`);
+    const joined = facts.join(' ').toLowerCase();
+    for (const n of needles) {
+      assert.ok(joined.includes(n.toLowerCase()), `${id} world_facts must pin down "${n}"`);
+    }
+  }
+  // Every fact must be traceable to something the script already asserts: the
+  // scripted NPC lines are the source of truth, world_facts only restates them.
+  const mall = getScenario('mall_01');
+  const scripted = [
+    mall.intro.text,
+    ...mall.steps.map((s) => s.tts_prompt),
+    ...mall.complete.map((c) => c.npc_line),
+  ]
+    .join(' ')
+    .toLowerCase();
+  for (const n of required.mall_01) {
+    assert.ok(scripted.includes(n), `"${n}" must come from a scripted line, not be invented`);
+  }
+});
+
+test('world_facts never reach the browser', () => {
+  assert.ok(ANSWER_KEY_FIELDS.includes('world_facts'));
+  for (const id of ['mamak_01', 'mall_01', 'office_01']) {
+    const facts = getScenario(id).world_facts;
+    for (const level of [1, 2, 3]) {
+      const json = JSON.stringify(publicScenario(getScenario(id), level));
+      assert.ok(!json.includes('world_facts'), `${id} L${level} leaks the world_facts key`);
+      for (const fact of facts) {
+        assert.ok(!json.includes(fact), `${id} L${level} leaks a world fact verbatim`);
+      }
+    }
+  }
+  // A per-step override, should anyone ever author one, is stripped too.
+  const scenario = getScenario('mall_01');
+  const patched = {
+    ...scenario,
+    steps: scenario.steps.map((s) =>
+      s.id === 'ask' ? { ...s, world_facts: ['SECRET-STEP-FACT'] } : s,
+    ),
+  };
+  assert.ok(!JSON.stringify(publicScenario(patched, 1)).includes('SECRET-STEP-FACT'));
+});
+
+test('the turn prompt binds npc_reply to world_facts without licensing a leak', () => {
+  const p = TURN_SYSTEM_PROMPT;
+  assert.match(p, /`world_facts` is the ground truth of this scene/);
+  assert.match(p, /ONLY if it is in `world_facts`/);
+  assert.match(p, /NOT permission to answer for the player/);
+  assert.match(p, /`forbidden_phrases`/);
+});
+
+test('the answer-key guard still wins over world_facts at mall_01 give_directions', () => {
+  // The L3 hand-off is the delicate case: "tingkat empat / eskalator / belok
+  // kiri" are true, are in world_facts, and are exactly what the PLAYER must
+  // now produce. Makcik does not know the way and must not say them.
+  const scenario = getScenario('mall_01');
+  const step = scenario.steps.find((s) => s.id === 'give_directions');
+  const banned = bannedPhrasesFor({
+    step,
+    scenario,
+    transcript: 'errr makcik, ikut saja',
+    conversationHistory: [{ npc: step.tts_prompt, player: 'errr makcik, ikut saja' }],
+  });
+  for (const phrase of ['tingkat empat', 'eskalator', 'belok kiri']) {
+    assert.ok(banned.includes(phrase), `${phrase} must be forbidden to Makcik`);
+  }
+  const out = stripAnswerKeyLeak('Naik eskalator sampai tingkat empat, lepas tu belok kiri ya dik?', {
+    step,
+    scenario,
+    transcript: 'errr makcik, ikut saja',
+    conversationHistory: [{ npc: step.tts_prompt }],
+    fallbackLine: step.npc_reprompt,
+  });
+  assert.equal(out.reply, step.npc_reprompt);
+  assert.ok(out.leaked.length);
+});
+
+test('bannedPhrasesFor exempts what has already been said aloud', () => {
+  const scenario = getScenario('mamak_01');
+  const step = scenario.steps.find((s) => s.id === 'wrong_order');
+  // The learner just said "teh tarik", so echoing it back is not a leak.
+  const banned = bannedPhrasesFor({
+    step,
+    scenario,
+    transcript: 'Bang, saya pesan teh tarik tadi.',
+    conversationHistory: [],
+  });
+  assert.ok(!banned.includes('teh tarik'));
+  assert.ok(banned.includes('kurang manis'), 'the half they did not say stays banned');
+});
+
 test('the turn prompt forbids the NPC from speaking or completing the task', () => {
   const p = TURN_SYSTEM_PROMPT;
   assert.match(p, /npc_persona/);
@@ -445,7 +547,7 @@ test('the turn prompt forbids the NPC from speaking or completing the task', () 
   assert.match(p, /word test/);
 });
 
-test('answerKeyPhrases pools the whole scenario and drops bare function words', () => {
+test('answerKeyPhrases pools the whole scenario and drops pure function phrases', () => {
   const scenario = getScenario('mamak_01');
   const step = scenario.steps.find((s) => s.id === 'wrong_order');
   const phrases = answerKeyPhrases(step, scenario);
@@ -458,7 +560,35 @@ test('answerKeyPhrases pools the whole scenario and drops bare function words', 
   const officePhrases = answerKeyPhrases(cover, office);
   assert.ok(!officePhrases.includes('boleh'));
   assert.ok(!officePhrases.includes('tapi'));
-  assert.ok(officePhrases.includes('tak boleh'), 'multi-word phrases stay banned');
+  // One content word is enough to ban the whole phrase...
+  assert.ok(officePhrases.includes('tak sempat'));
+  assert.ok(officePhrases.includes('macam mana kalau'));
+  // ...but a phrase made ENTIRELY of function words carries no answer, so it
+  // is not a leak. This is what gives Abang Guard back "nak cari apa ya?":
+  // `nak cari` is in mall_01's question-word fallback group for the
+  // deterministic scorer, and reveals nothing — `food court` is the answer.
+  const mall = getScenario('mall_01');
+  const ask = mall.steps.find((s) => s.id === 'ask');
+  const mallPhrases = answerKeyPhrases(ask, mall);
+  assert.ok(!mallPhrases.includes('nak cari'));
+  assert.ok(!mallPhrases.includes('kat mana'));
+  assert.ok(mallPhrases.includes('food court'), 'the actual answer stays banned');
+  assert.ok(mallPhrases.includes('tingkat empat'));
+  assert.ok(mallPhrases.includes('belok kiri'));
+});
+
+test('the guard may ask "nak cari apa" but may not say where the food court is', () => {
+  const scenario = getScenario('mall_01');
+  const step = scenario.steps.find((s) => s.id === 'ask');
+  const open = stripAnswerKeyLeak('Ha, encik nak cari apa ya?', {
+    step,
+    scenario,
+    transcript: 'errr',
+    conversationHistory: [{ npc: step.tts_prompt }],
+    fallbackLine: scenario.npc_reprompt,
+  });
+  assert.equal(open.reply, 'Ha, encik nak cari apa ya?');
+  assert.deepEqual(open.leaked, []);
 });
 
 test('stripAnswerKeyLeak excises the answer the learner never said', () => {
@@ -518,4 +648,46 @@ test('stripAnswerKeyLeak does not leave a dangling connective behind', () => {
     conversationHistory: [],
   });
   assert.equal(out.reply, 'Oh, kasut baru?');
+});
+
+test('stripAnswerKeyLeak does not leave an orphaned vocative behind', () => {
+  // Observed live at mall_01 L3: cutting the body of the line left "Hah? dik?",
+  // a term of address hanging off nothing.
+  const scenario = getScenario('mall_01');
+  const step = scenario.steps.find((s) => s.id === 'give_directions');
+  const out = stripAnswerKeyLeak('Aduh, tak tahu ke? Hah? Macam mana nak pergi tu, dik?', {
+    step,
+    scenario,
+    transcript: 'saya pun tak tahu makcik',
+    conversationHistory: [{ npc: step.tts_prompt }],
+    fallbackLine: step.npc_reprompt,
+  });
+  assert.equal(out.reply, 'Aduh, tak tahu ke? Hah?');
+});
+
+test('stripAnswerKeyLeak does not emit a half-finished sentence', () => {
+  // Live at mamak_01: cutting the tail of "Hah? Nak teh tarik, kurang manis?"
+  // left "Hah? Nak teh tarik" — a sentence stopped mid-word-order. The clause
+  // that ended on a comma goes too, and the character's own line carries it.
+  const scenario = getScenario('mamak_01');
+  const step = scenario.steps.find((s) => s.id === 'order');
+  const out = stripAnswerKeyLeak('Hah? Nak teh tarik, kurang manis?', {
+    step,
+    scenario,
+    transcript: 'can i have one teh tarik less sweet',
+    conversationHistory: [],
+    fallbackLine: scenario.npc_reprompt,
+  });
+  assert.equal(out.reply, scenario.npc_reprompt);
+  // And a comma left in front of a fresh sentence is promoted to a full stop.
+  const mall = getScenario('mall_01');
+  const gd = mall.steps.find((s) => s.id === 'give_directions');
+  const tidy = stripAnswerKeyLeak('Aduh, naik eskalator tu, betul ke dik? Makcik tak faham.', {
+    step: gd,
+    scenario: mall,
+    transcript: 'naik je makcik',
+    conversationHistory: [],
+    fallbackLine: gd.npc_reprompt,
+  });
+  assert.ok(!/,\s+[A-Z]/.test(tidy.reply), `stray comma in ${JSON.stringify(tidy.reply)}`);
 });

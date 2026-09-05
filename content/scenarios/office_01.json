@@ -5,6 +5,15 @@
   "badge": "Survived the Boss",
   "context": "Your manager stops by your desk. The report from yesterday is not finished.",
 
+  "_world_facts_note": "Ground truth of this scene for the LLM only — never sent to the browser, never spoken. Every entry is asserted by a scripted tts_prompt/intro/complete line below; do not add detail the script does not commit to.",
+  "world_facts": [
+    "It is Monday morning at the office; the player has only just arrived.",
+    "The report is yesterday's and it is not finished.",
+    "Kak Ana is the player's manager, and she is the one waiting on that report.",
+    "Kak Ana has a meeting at four o'clock \u2014 pukul empat \u2014 and needs the report for it.",
+    "At level 3 there is a client call at eleven \u2014 pukul sebelas \u2014 that Kak Ana cannot attend."
+  ],
+
   "npc_name": "Kak Ana",
   "npc_reprompt": "Kejap. Kamu maksud macam mana ni?",
   "npc_persona": "Kak Ana: the player's manager, forties, direct and competent. She is not hostile and not a bully, but she is waiting on something that is late and she lets that show — short sentences, a level tone, real social pressure. Office Malay with the usual borrowed words (\"report\", \"meeting\", \"client\"). She calls the player \"kamu\" or by nothing at all. When the answer she gets is vague, evasive or off the point, she does not soften it away and does not suggest the answer — she presses, the way a manager does: repeats the question more narrowly, asks for a time, or waits (\"Jadi bila?\", \"Kamu maksud macam mana ni?\"). She acknowledges a real reason before pushing again.",
