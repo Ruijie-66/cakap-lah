@@ -1,0 +1,23 @@
+# Secrets — never, under any circumstances, in an image layer.
+.env
+.env.*
+!.env.example
+
+# Reinstalled inside the image for the right platform/arch.
+node_modules
+
+# Not needed at run time.
+.git
+.gitignore
+.DS_Store
+**/.DS_Store
+.superpowers
+test
+scripts
+art asset
+*.md
+*.pdf
+Dockerfile
+.dockerignore
+render.yaml
+*.log

@@ -1,0 +1,41 @@
+# render.yaml — Render Blueprint for CAKAP LAH!
+#
+# Render is the happy path: it gives every service HTTPS on a *.onrender.com
+# hostname with no configuration, which this app REQUIRES (getUserMedia refuses
+# on plain HTTP and the microphone silently never opens). It also injects PORT
+# and puts exactly one proxy in front of the process, which is what
+# TRUST_PROXY=1 assumes.
+#
+# NO SECRETS IN THIS FILE. The three keys below are declared with
+# `sync: false`, which means "Render will prompt for this value and store it in
+# the dashboard" — the value is never committed. See DEPLOY.md.
+
+services:
+  - type: web
+    name: cakap-lah
+    runtime: node
+    region: singapore # closest to the players and to the Revolab API
+    # Free tier SLEEPS after ~15 minutes idle and takes 30-50s to wake. That
+    # cold start reads as "broken" to a judge who opens the link. Use `starter`
+    # (or better) for anything being demoed. See DEPLOY.md.
+    plan: starter
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Exactly one Render load balancer sits in front of the process, so the
+      # last X-Forwarded-For entry is the real client IP. Getting this wrong
+      # either rate-limits every visitor as one client (0) or lets a header
+      # spoof the limit (true). See server/middleware/rate-limit.js.
+      - key: TRUST_PROXY
+        value: "1"
+      - key: LLM_PROVIDER
+        value: openai
+      # Secrets — set these in the Render dashboard, never here.
+      - key: REVOLAB_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
