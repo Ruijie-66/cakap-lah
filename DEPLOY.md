@@ -35,19 +35,43 @@ after an idle period. They will see a white screen for the better part of a
 minute and they will assume the submission is broken. They will not wait, and
 they will not refresh.
 
-**Recommendation: pay for the always-on tier for the weekend.** On Render that
-is the Starter plan (~$7/month, cancellable) — `render.yaml` already specifies
-`plan: starter` for this reason. If you must stay on free, open the URL
-yourself five minutes before the demo and keep a tab on it, and never hand out
-a cold link.
+**`render.yaml` ships `plan: free`**, because declaring a paid plan is what
+makes Render's Blueprint flow demand a card before it will create anything. Free
+works — same HTTPS, same `*.onrender.com` hostname, same everything the app
+needs — it just sleeps.
+
+**If you can spend ~$7, do.** Change the one `plan:` line in `render.yaml` to
+`starter` and push; Render redeploys and the sleeping stops. It is cancellable
+after the weekend.
+
+**Staying on free? Then the cold start is a thing you manage, not a thing you
+hope about:**
+
+- **Warm it before you present.** Open the URL yourself 2–3 minutes before the
+  demo and leave the tab open. Never hand out a link you have not just loaded.
+- **Never let the judges be the ones who wake it.** If you are sending a link
+  ahead of time, send it with "give it a minute to wake up" — a stated wait is a
+  quirk, an unexplained white screen is a broken submission.
+- **Keep it awake across the judging window** with a ping from your laptop, for
+  as long as you actually need it:
+
+  ```sh
+  while true; do curl -s -o /dev/null $URL/api/health; sleep 600; done
+  ```
+
+  Any inbound request resets the 15-minute idle timer, and `/api/health` is a
+  cheap JSON route. Two caveats: the free tier gives the *workspace* 750
+  instance-hours a month, which one continuously-awake service consumes almost
+  entirely, so do not leave this running all month; and the ping counts against
+  the per-IP rate limit, which at one call per 10 minutes is nothing.
 
 ---
 
 ## Happy path: Render
 
 `render.yaml` in the repo root is a Render Blueprint. It contains **no secrets**
-— the three key values are marked `sync: false`, so Render prompts for them and
-stores them in its own dashboard.
+— the two secret values are marked `sync: false`, so Render prompts for them
+and stores them in its own dashboard.
 
 ### Step 1 — push the repo to GitHub
 
@@ -67,7 +91,9 @@ git log --all -p -- .env | head     # must print NOTHING
 
 1. Go to <https://dashboard.render.com> → **New** → **Blueprint**.
 2. Connect the GitHub repo. Render finds `render.yaml` and proposes one web
-   service called `cakap-lah`.
+   service called `cakap-lah` on the free instance type. If it asks for payment
+   details at this point, something in the blueprint is declaring a paid
+   resource — check the `plan:` line.
 3. Render prompts for the values marked `sync: false`. Paste them here:
 
    | Key                | Value                                              |
@@ -75,16 +101,27 @@ git log --all -p -- .env | head     # must print NOTHING
    | `REVOLAB_API_KEY`  | the hackathon Revolab key (from your local `.env`)  |
    | `OPENAI_API_KEY`   | your OpenAI key (from your local `.env`)            |
 
-   `LLM_PROVIDER=openai`, `TRUST_PROXY=1` and `NODE_ENV=production` are already
-   in `render.yaml` and need no input.
+   `LLM_PROVIDER=openai`, `TRUST_PROXY=1`, `NODE_VERSION=24` and
+   `NODE_ENV=production` are already in `render.yaml` and need no input. Do
+   **not** add `MOCK` — it is set in your local `.env`, and copying it across
+   ships a game where every voice line is silence.
 
 4. **Apply**. The first deploy takes 2–4 minutes.
 
-> Prefer clicking through instead of the Blueprint? Create a **Web Service**,
-> runtime **Node**, build command `npm ci --omit=dev`, start command
-> `npm start`, health check path `/api/health`, and add all five environment
-> variables by hand — including `TRUST_PROXY=1`, which the rate limiter needs
-> (see "Getting the client IP right" below).
+If Render rejects the region, the free instance type is not offered in
+`singapore` for your workspace — change `region:` to one it does offer
+(`oregon`, `ohio`, `virginia`, `frankfurt`) and re-apply. Latency to a judge in
+the room is a rounding error next to the cold start you are already managing.
+
+> Prefer clicking through instead of the Blueprint — or blocked by it? Create a
+> **Web Service**, connect the repo, then set: runtime **Node**, instance type
+> **Free**, build command `npm ci --omit=dev`, start command `npm start`, health
+> check path `/api/health`. Then add every environment variable by hand:
+> `REVOLAB_API_KEY`, `OPENAI_API_KEY`, `LLM_PROVIDER=openai`,
+> `NODE_ENV=production`, `NODE_VERSION=24`, and `TRUST_PROXY=1` — the last one
+> is not optional, the rate limiter reads it (see "Getting the client IP right").
+> Do **not** add `MOCK`; it is in your local `.env` and it would ship a silent
+> game.
 
 ### Step 3 — verify
 

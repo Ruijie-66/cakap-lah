@@ -15,10 +15,13 @@ services:
     name: cakap-lah
     runtime: node
     region: singapore # closest to the players and to the Revolab API
-    # Free tier SLEEPS after ~15 minutes idle and takes 30-50s to wake. That
-    # cold start reads as "broken" to a judge who opens the link. Use `starter`
-    # (or better) for anything being demoed. See DEPLOY.md.
-    plan: starter
+    # `free` costs nothing but SLEEPS after 15 minutes with no inbound traffic
+    # and takes 30-50s to wake. That cold start reads as "broken" to a judge who
+    # opens the link cold, so warm it before any demo (see DEPLOY.md). Note also
+    # that declaring a paid plan here is what makes Render's Blueprint flow ask
+    # for a card up front. To buy the always-on behaviour instead, change this
+    # one line to `starter` (~$7/month, cancellable) and redeploy.
+    plan: free
     buildCommand: npm ci --omit=dev
     startCommand: npm start
     healthCheckPath: /api/health
