@@ -563,35 +563,7 @@ export function createUI() {
         }
       }
 
-      el.endTranscript.innerHTML = '';
-      for (const turn of session?.turns || []) {
-        const li = document.createElement('li');
-        li.className = 'log-turn';
-        const band = bandForTurn({ overall_score: turn.score, band: turn.band, band_label: turn.bandLabel });
-        li.innerHTML = `
-          <div class="log-npc"><b class="who"></b><span class="line"></span></div>
-          <div class="log-you"><b class="who">Anda</b><span class="line"></span></div>
-          <div class="log-reply"><b class="who"></b><span class="line"></span></div>`;
-        const npcName = turn.npcName || session?.scenario?.npc_name || 'NPC';
-        li.querySelector('.log-npc .who').textContent = npcName;
-        li.querySelector('.log-npc .line').textContent = turn.npc;
-        li.querySelector('.log-you .line').textContent = turn.player;
-        li.querySelector('.log-reply .who').textContent = npcName;
-        li.querySelector('.log-reply .line').textContent = turn.npcReply || '—';
-        if (turn.score != null && band) {
-          const chip = document.createElement('span');
-          chip.className = 'turn-score';
-          chip.dataset.band = band.band;
-          chip.textContent = `${turn.score} · ${band.label}`;
-          li.querySelector('.log-you').appendChild(chip);
-        } else {
-          const chip = document.createElement('span');
-          chip.className = 'turn-score none';
-          chip.textContent = 'tiada skor';
-          li.querySelector('.log-you').appendChild(chip);
-        }
-        el.endTranscript.appendChild(li);
-      }
+      renderThread(el.endTranscript, session);
       if (summary?.fallback) {
         const note = document.createElement('li');
         note.className = 'muted-note';
@@ -603,6 +575,111 @@ export function createUI() {
   };
 
   return ui;
+}
+
+/**
+ * The mission transcript, as a chat thread.
+ *
+ * Grouped per TURN — [scripted line][you][reply] — it read as if the NPC said
+ * two different things every turn, and a retry repeated the same scripted line
+ * verbatim in consecutive blocks. So: one bubble per utterance, in the order
+ * they were actually spoken, NPC left, player right, the turn score on the
+ * player's own bubble. `session.thread` is the record of what was really said;
+ * `session.turns` is only a fallback for a session built before it existed.
+ */
+function renderThread(node, session) {
+  node.innerHTML = '';
+  const entries = threadEntries(session);
+  if (!entries.length) {
+    const li = document.createElement('li');
+    li.className = 'muted-note';
+    li.textContent = '—';
+    node.appendChild(li);
+    return;
+  }
+  let lastNpcName = null;
+  for (const entry of entries) {
+    if (entry.role === 'npc') {
+      // Consecutive lines from the same character are one person still
+      // talking: name and portrait are shown once, at the top of the run.
+      const isNewSpeaker = entry.name !== lastNpcName;
+      node.appendChild(npcMessage(entry, isNewSpeaker));
+      lastNpcName = entry.name;
+    } else {
+      node.appendChild(playerMessage(entry));
+      // The next NPC line starts a fresh run: re-show who is speaking.
+      lastNpcName = null;
+    }
+  }
+}
+
+/** The chat thread, falling back to the per-turn log for older sessions. */
+function threadEntries(session) {
+  const thread = session?.thread;
+  if (Array.isArray(thread) && thread.length) return thread;
+  const out = [];
+  for (const turn of session?.turns || []) {
+    const name = turn.npcName || session?.scenario?.npc_name || 'NPC';
+    const portrait = session?.scenario?.portrait || '';
+    if (turn.npc) out.push({ role: 'npc', text: turn.npc, name, portrait });
+    out.push({
+      role: 'player',
+      text: turn.player,
+      score: turn.score,
+      band: turn.band,
+      bandLabel: turn.bandLabel,
+    });
+    if (turn.npcReply) out.push({ role: 'npc', text: turn.npcReply, name, portrait });
+  }
+  return out;
+}
+
+function npcMessage(entry, isNewSpeaker) {
+  const li = document.createElement('li');
+  li.className = 'msg msg-npc';
+  if (!isNewSpeaker) li.classList.add('is-cont');
+  const face = PORTRAIT_FACE[entry.portrait] || { glyph: '🧑', hue: 200 };
+  li.innerHTML = `
+    <span class="msg-avatar" aria-hidden="true"><img alt="" hidden /><span class="msg-emoji"></span></span>
+    <div class="msg-body"><b class="msg-who"></b><div class="msg-bubble"></div></div>`;
+  const avatar = li.querySelector('.msg-avatar');
+  avatar.style.setProperty('--hue', String(face.hue));
+  li.querySelector('.msg-emoji').textContent = face.glyph;
+  li.querySelector('.msg-who').textContent = entry.name || 'NPC';
+  li.querySelector('.msg-bubble').textContent = entry.text;
+  if (entry.portrait) {
+    const img = li.querySelector('img');
+    loadArt(`/assets/npc/${entry.portrait}.png`, (url) => {
+      img.src = url;
+      img.hidden = false;
+      // The avatar is a grid cell: without this both would render at once.
+      li.querySelector('.msg-emoji').hidden = true;
+    });
+  }
+  return li;
+}
+
+function playerMessage(entry) {
+  const li = document.createElement('li');
+  li.className = 'msg msg-you';
+  li.innerHTML = `<div class="msg-body"><b class="msg-who">Anda</b><div class="msg-bubble"></div></div>`;
+  li.querySelector('.msg-bubble').textContent = entry.text;
+  const band = bandForTurn({
+    overall_score: entry.score,
+    band: entry.band,
+    band_label: entry.bandLabel,
+  });
+  const chip = document.createElement('span');
+  if (entry.score != null && band) {
+    chip.className = 'turn-score';
+    chip.dataset.band = band.band;
+    chip.textContent = `${entry.score} · ${band.label}`;
+  } else {
+    chip.className = 'turn-score none';
+    chip.textContent = 'tiada skor';
+  }
+  li.querySelector('.msg-body').appendChild(chip);
+  return li;
 }
 
 function fillList(node, items) {
