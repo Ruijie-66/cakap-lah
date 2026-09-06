@@ -28,8 +28,15 @@ export function createSession(scenario, level) {
     retryCount: 0,
     /** [{npc, player}] — exactly the shape /api/evaluate + /api/summarise want */
     history: [],
-    /** richer per-turn log for the mission-end transcript */
+    /** richer per-turn log, kept for the summary payload and as a fallback */
     turns: [],
+    /**
+     * The mission as it was ACTUALLY heard and spoken, in order:
+     *   [{role: 'npc', text, name, portrait} | {role: 'player', text, score, …}]
+     * This — not `turns` — is what the end-of-mission transcript renders, so a
+     * scripted line that was never spoken can never appear in it.
+     */
+    thread: [],
     /** [{step_id, overall_score}] for /api/summarise */
     turnScores: [],
     startedAt: Date.now(),
@@ -106,13 +113,55 @@ export function closingSpeakerFor(scenario, lastSpeaker) {
 }
 
 /**
+ * Log a line the NPC ACTUALLY said, at the moment it is said.
+ *
+ * The mission-end transcript is built from this, so nothing may be logged
+ * here speculatively: a scripted `tts_prompt` is logged when it is spoken and
+ * on no other occasion. Two identical lines back to back collapse into one —
+ * that is one utterance as far as the player is concerned.
+ *
+ * @param {ReturnType<createSession>} session
+ * @param {{text: string, name?: string, portrait?: string}} line
+ * @returns {object|null} the thread entry, or null if nothing was logged
+ */
+export function logNpcSaid(session, { text, name, portrait } = {}) {
+  const said = String(text || '').trim();
+  if (!session || !said) return null;
+  const speakerName = name || session.scenario?.npc_name || '';
+  const last = session.thread[session.thread.length - 1];
+  if (last && last.role === 'npc' && last.text === said && last.name === speakerName) return last;
+  const entry = {
+    role: 'npc',
+    text: said,
+    name: speakerName,
+    portrait: portrait || session.scenario?.portrait || '',
+  };
+  session.thread.push(entry);
+  return entry;
+}
+
+/**
  * Append a completed turn. `evaluation` may be a no_input turn, in which case
  * no score is recorded anywhere (a system/silence turn never costs points).
+ *
+ * `npc` is the line the player actually HEARD before answering — on a retry
+ * that is not necessarily the step's scripted prompt — and it is what goes
+ * into the evaluator's conversation history.
+ *
  * @param {ReturnType<createSession>} session
  * @param {{stepId: string, npc: string, player: string, npcName?: string, evaluation: object}} turn
  */
 export function recordTurn(session, { stepId, npc, player, npcName, evaluation }) {
   session.history.push({ npc, player });
+  session.thread.push({
+    role: 'player',
+    stepId,
+    text: player,
+    score: evaluation?.scored ? evaluation.overall_score : null,
+    band: evaluation?.band ?? null,
+    bandLabel: evaluation?.band_label ?? null,
+    result: evaluation?.result ?? null,
+  });
   session.turns.push({
     stepId,
     npcName: npcName || session.scenario.npc_name,
@@ -144,6 +193,14 @@ export function dropLastTurn(session, stepId) {
   if (!last || last.stepId !== stepId) return false;
   session.turns.pop();
   session.history.pop();
+  // The chat thread has to lose the same attempt: the player's line and any
+  // NPC line that came after it (the reaction to the attempt being undone).
+  while (session.thread.length && session.thread[session.thread.length - 1].role === 'npc') {
+    session.thread.pop();
+  }
+  if (session.thread.length && session.thread[session.thread.length - 1].role === 'player') {
+    session.thread.pop();
+  }
   const lastScore = session.turnScores[session.turnScores.length - 1];
   if (lastScore && lastScore.step_id === stepId) session.turnScores.pop();
   return true;

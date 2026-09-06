@@ -14,8 +14,10 @@
 //   7 validation/retry/fallback is the server's job — render what comes back
 //   8 show transcript, turn score counting up, one coaching line
 //   9 POST /api/tts with npc_reply in the NPC's own voice; portrait state
-//  10 append {npc, player, score} to the transcript log
-//  11 branch → next step / retry same step / mission end → POST /api/summarise
+//  10 append what was actually said {npc, player, score} to the transcript log
+//  11 branch → next step / retry same step (the scripted prompt is spoken
+//     AGAIN, so a retry can never hide the information the step needs) /
+//     mission end → POST /api/summarise
 //
 // Branch resolution and level gating live on the SERVER. We follow
 // `next_step_id` and treat `__complete__` as mission end. No client-side rules.
@@ -29,6 +31,7 @@ import {
   dropLastTurn,
   createSession,
   hintFor,
+  logNpcSaid,
   recordTurn,
   speakerFor,
   stepById,
@@ -57,6 +60,12 @@ export function createEngine({ api, player, emit }) {
   let lastStepSpeaker = null;
   /** a turn is logged but its branch has not been applied yet — undoable */
   let uncommittedTurn = null;
+  /**
+   * The last NPC line the player actually heard. This — not the step's
+   * scripted prompt — is the stimulus a recorded answer is answering, and it
+   * is what goes into the transcript and the evaluator's history.
+   */
+  let lastNpcSaid = null;
 
   const alive = (token) => token === runToken && session !== null;
 
@@ -86,6 +95,27 @@ export function createEngine({ api, player, emit }) {
     if (!result.ok && !result.interrupted) emit('voice-warning', { message: result.reason, text, who });
     emit('speak-end', { who, text, ok: result.ok, interrupted: !!result.interrupted });
     return result;
+  }
+
+  /**
+   * Put one NPC line on screen, log it as heard, and speak it.
+   *
+   * Every NPC utterance goes through here, so `session.thread` is a record of
+   * what was said rather than of what the script says. The line is logged even
+   * if the voice fails: the text is on screen and the UI tells the player to
+   * read it, so they did receive it.
+   */
+  async function sayNpc(token, { text, speaker, state = 'idle', reaction = false }) {
+    if (!text || !alive(token)) return { ok: false, reason: 'skipped' };
+    emit('npc-line', { text, speaker, state, ...(reaction ? { reaction: true } : {}) });
+    logNpcSaid(session, { text, name: speaker?.name, portrait: speaker?.portrait });
+    lastNpcSaid = text;
+    return speak(token, {
+      text,
+      voiceId: speaker?.voiceId,
+      speed: session.scenario.speed,
+      who: 'npc',
+    });
   }
 
   /** Enter a step: announce it, speak the prompt, then hand the mic over. */
@@ -121,13 +151,7 @@ export function createEngine({ api, player, emit }) {
       if (!alive(token)) return;
     }
 
-    emit('npc-line', { text: step.tts_prompt, speaker, state: 'idle' });
-    await speak(token, {
-      text: step.tts_prompt,
-      voiceId: speaker.voiceId,
-      speed: scenario.speed,
-      who: 'npc',
-    });
+    await sayNpc(token, { text: step.tts_prompt, speaker, state: 'idle' });
     if (!alive(token)) return;
     emit('ready-to-record', { step, reason: 'prompt-ended' });
   }
@@ -140,13 +164,7 @@ export function createEngine({ api, player, emit }) {
     if (closing?.npc_line) {
       // ONE speaker drives both the voice and the portrait/name on screen.
       const speaker = closingSpeakerFor(scenario, lastSpeaker);
-      emit('npc-line', { text: closing.npc_line, speaker, state: 'pleased' });
-      await speak(token, {
-        text: closing.npc_line,
-        voiceId: speaker.voiceId,
-        speed: scenario.speed,
-        who: 'npc',
-      });
+      await sayNpc(token, { text: closing.npc_line, speaker, state: 'pleased' });
       if (!alive(token)) return;
     }
 
@@ -178,6 +196,7 @@ export function createEngine({ api, player, emit }) {
       const token = ++runToken;
       session = null;
       busy = true;
+      lastNpcSaid = null;
       emit('mission-loading', { scenarioId, level });
       let scenario;
       try {
@@ -200,6 +219,12 @@ export function createEngine({ api, player, emit }) {
       const token = runToken;
       emit('speaking', { who: lastLine.who, text: lastLine.text, replay: true });
       let result;
+      // `resynth` means lastLine was re-pointed at a line the cached clip is
+      // NOT — replaying the cache would play the wrong thing.
+      if (lastLine.resynth) {
+        const line = { ...lastLine, resynth: false };
+        return speak(token, line);
+      }
       if (player.hasClip()) {
         result = await player.replay();
       } else {
@@ -298,7 +323,11 @@ export function createEngine({ api, player, emit }) {
         uncommittedTurn = step.id;
         recordTurn(session, {
           stepId: step.id,
-          npc: step.tts_prompt,
+          // What the player was ANSWERING — the line they last heard. On a
+          // retry that is the NPC's improvised reply, not the scripted prompt,
+          // and logging the prompt here put words in the NPC's mouth that were
+          // never said.
+          npc: lastNpcSaid || step.tts_prompt,
           npcName: speaker.name,
           player: transcript,
           evaluation,
@@ -306,17 +335,11 @@ export function createEngine({ api, player, emit }) {
       }
 
       // --- 9. The NPC reacts, in character, in its own voice
-      emit('npc-line', {
+      await sayNpc(token, {
         text: evaluation.npc_reply,
         speaker,
         state: evaluation.npc_state || 'idle',
         reaction: true,
-      });
-      await speak(token, {
-        text: evaluation.npc_reply,
-        voiceId: speaker.voiceId,
-        speed: scenario.speed,
-        who: 'npc',
       });
       if (!alive(token)) return;
 
@@ -336,6 +359,19 @@ export function createEngine({ api, player, emit }) {
           freeRetry: !!evaluation.free_retry,
           hint: evaluation.improvement || step.retry_hint || '',
         });
+        // The scripted prompt is the STIMULUS — in mall_01's `confirm` step it
+        // literally carries the directions the player is being asked to repeat
+        // back. A retry used to skip it entirely, leaving only the improvised
+        // reply ("Hah? Boleh ulang?"), which made the step unwinnable and left
+        // the replay button pointing at the reply rather than the directions.
+        //
+        // So: after reacting, the NPC says its line again. Always, not by some
+        // guess at which prompts "carry information" — a wrong guess is a dead
+        // end, and a person asked to repeat themselves does exactly this.
+        // Re-speaking here (rather than only re-arming the replay button) also
+        // fixes the replay: `lastLine` ends up back on the scripted prompt.
+        await sayNpc(token, { text: step.tts_prompt, speaker, state: 'idle' });
+        if (!alive(token)) return;
         emit('ready-to-record', { step, reason: 'retry' });
         return;
       }
@@ -360,6 +396,23 @@ export function createEngine({ api, player, emit }) {
       busy = false;
       interrupted = true;
       player.stop();
+      // A user-initiated redo re-arms the mic immediately — forcing the NPC to
+      // repeat itself here would be in the way, since the player asked to go
+      // again the moment they saw the mistranscription. But the last thing
+      // spoken may have been the NPC's reply, so point "Dengar sekali lagi" at
+      // the step's own line: the stimulus stays one press away.
+      const stepSpeaker = speakerFor(session.scenario, step);
+      lastLine = {
+        text: step.tts_prompt,
+        voiceId: stepSpeaker.voiceId,
+        speed: session.scenario.speed,
+        who: 'npc',
+        resynth: true,
+      };
+      // Put the step's own line back on screen too, so the bubble and the
+      // replay button agree about what is being asked. Nothing is spoken and
+      // nothing is logged: the NPC did not say anything here.
+      emit('npc-line', { text: step.tts_prompt, speaker: stepSpeaker, state: 'idle' });
       emit('step-redo', { step, retryCount: session.retryCount });
       emit('ready-to-record', { step, reason: 'user-retry' });
       return true;
@@ -380,6 +433,7 @@ export function createEngine({ api, player, emit }) {
       session = null;
       lastLine = null;
       lastStepSpeaker = null;
+      lastNpcSaid = null;
       interrupted = true;
       player.stop();
       emit('aborted');
