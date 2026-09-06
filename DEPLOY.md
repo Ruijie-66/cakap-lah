@@ -27,13 +27,24 @@ padlock **before** you conclude anything is wrong with the microphone.
 ### 2. Free tiers sleep, and a cold start reads as "broken"
 
 Render's (and Railway's, and Fly's) free tier spins the container down after
-about 15 minutes with no traffic. The next request has to boot it again:
-**30–50 seconds of blank page** before anything renders.
+about 15 minutes with no traffic. The next request has to boot it again, which
+takes **about a minute**.
 
-A judge who opens your link during judging is, by definition, the first visitor
-after an idle period. They will see a white screen for the better part of a
-minute and they will assume the submission is broken. They will not wait, and
-they will not refresh.
+To be precise about what that looks like, because it is better than it sounds:
+Render **holds the request open** and serves connecting browsers its own
+loading page while the container starts. Nothing errors, and **nobody needs to
+refresh** — when the service is up the request completes and the game renders.
+Refreshing does not speed it up (it just restarts the wait against a container
+that is already booting), and it does not break anything either.
+
+The risk is therefore not technical, it is human: a judge who opens your link
+during judging is, by definition, the first visitor after an idle period, and a
+minute of watching someone else's loading page is long enough to conclude the
+submission is broken and close the tab.
+
+A cold start and a crash look different, though. A wait that ends in the game
+is a cold start; a **502** is a crashed or failing service, and the answer to
+that is the Render logs, not patience.
 
 **`render.yaml` ships `plan: free`**, because declaring a paid plan is what
 makes Render's Blueprint flow demand a card before it will create anything. Free
@@ -50,8 +61,8 @@ hope about:**
 - **Warm it before you present.** Open the URL yourself 2–3 minutes before the
   demo and leave the tab open. Never hand out a link you have not just loaded.
 - **Never let the judges be the ones who wake it.** If you are sending a link
-  ahead of time, send it with "give it a minute to wake up" — a stated wait is a
-  quirk, an unexplained white screen is a broken submission.
+  ahead of time, send it with "give it a minute to wake up, no need to refresh"
+  — a stated wait is a quirk, an unexplained one is a broken submission.
 - **Keep it awake across the judging window** with a ping from your laptop, for
   as long as you actually need it:
 
