@@ -44,7 +44,10 @@
       <h2>3 · Hear a reply</h2>
       <div class="row">
         <label class="field visually-hidden" for="ttsText">Reply text</label>
-        <input type="text" id="ttsText" value="Boleh, teh tarik satu. Nak tambah roti canai?" />
+        <!-- /api/tts only speaks lines the game produces (server/game/spoken-text.js),
+             so this box is pre-filled with a real scenario line. Arbitrary text here
+             will come back 403 — that is the guardrail working, not a bug. -->
+        <input type="text" id="ttsText" value="Ya boss, nak minum apa?" />
       </div>
       <div class="controls">
         <label class="field visually-hidden" for="voice">Voice</label>

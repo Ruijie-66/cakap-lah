@@ -1,6 +1,21 @@
 import 'dotenv/config';
 
 export const PORT = Number(process.env.PORT) || 3000;
+/**
+ * Bind address. 0.0.0.0 so a container port mapping and a platform health
+ * check can actually reach the process; HOST=127.0.0.1 keeps it local-only.
+ */
+export const HOST = process.env.HOST || '0.0.0.0';
+/**
+ * How many reverse proxies sit in front of this process, for express's
+ * `trust proxy`. 1 is correct on Render/Fly/Railway/Heroku (one load balancer
+ * appends the real client IP to X-Forwarded-For). 0 for a directly exposed
+ * process. Anything else and the rate limiter reads the wrong client IP —
+ * see server/middleware/rate-limit.js.
+ */
+export const TRUST_PROXY = Number.isFinite(Number(process.env.TRUST_PROXY))
+  ? Number(process.env.TRUST_PROXY)
+  : 1;
 export const REVOLAB_API_KEY = process.env.REVOLAB_API_KEY || '';
 export const REVOLAB_BASE_URL = process.env.REVOLAB_BASE_URL || 'https://api.revolab.ai';
 export const MOCK = process.env.MOCK === '1';

@@ -25,6 +25,48 @@ const DEFAULT_TIMEOUT_MS = 30000;
 const FORWARDED_PARAMS = ['mock', 'fail'];
 
 /**
+ * A per-tab session id, sent as `x-session-id` on every API call.
+ *
+ * The server uses it for two things: a per-session turn budget, and the
+ * short-lived registry of lines it generated for us (so /api/tts will speak an
+ * npc_reply back — see server/game/spoken-text.js). It is NOT a credential and
+ * carries nothing about the player; a hostile client can mint a new one per
+ * request, which is why the server's real backstop is its per-IP limit.
+ *
+ * sessionStorage keeps it stable across a reload within the tab, so a refresh
+ * mid-mission does not lose the right to replay the lines already on screen.
+ */
+const SESSION_STORAGE_KEY = 'cakaplah.session';
+
+function newSessionId() {
+  try {
+    if (crypto?.randomUUID) return crypto.randomUUID().replace(/-/g, '').slice(0, 32);
+  } catch {
+    /* fall through */
+  }
+  return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export const sessionId = (() => {
+  try {
+    const existing = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (existing) return existing;
+    const fresh = newSessionId();
+    sessionStorage.setItem(SESSION_STORAGE_KEY, fresh);
+    return fresh;
+  } catch {
+    // Private mode / storage disabled: a per-load id still works, it just does
+    // not survive a refresh.
+    return newSessionId();
+  }
+})();
+
+/** Merge the session header into any headers object. */
+function withSession(headers = {}) {
+  return { ...headers, 'x-session-id': sessionId };
+}
+
+/**
  * Build an API path with the page's mock/fail params appended.
  * @param {string} path e.g. '/api/stt'
  * @param {Record<string,string|number>} [extra] additional query params
@@ -116,7 +158,12 @@ async function errorFromResponse(res, label) {
     /* body already consumed or unreadable — fall through to the generic text */
   }
   const message = detail || `${label} failed (HTTP ${res.status}). Please try again.`;
-  return new ApiError(message, { status: res.status, kind: 'http' });
+  // A 429 is a normal retry state, not a dead end: the server tells us how
+  // long to wait and the caller renders it beside the Retry button.
+  return new ApiError(message, {
+    status: res.status,
+    kind: res.status === 429 ? 'rate-limited' : 'http',
+  });
 }
 
 /** Map a blob MIME type to a filename the server/upstream will recognise. */
@@ -155,6 +202,7 @@ export async function stt(blob, mimeType, options = {}) {
 
   const res = await fetchWithTimeout(apiUrl('/api/stt'), {
     method: 'POST',
+    headers: withSession(),
     body: form,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     label: 'Transcription',
@@ -179,7 +227,7 @@ export async function tts({ text, voiceId, speed, language, timeoutMs } = {}) {
 
   const res = await fetchWithTimeout(apiUrl('/api/tts'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: withSession({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(body),
     timeoutMs: timeoutMs ?? DEFAULT_TIMEOUT_MS,
     label: 'The voice',
@@ -206,9 +254,9 @@ function numberOrNull(v) {
  */
 async function json(path, options = {}) {
   const { method = 'GET', body, query, timeoutMs, label = 'The server' } = options;
-  const init = { method };
+  const init = { method, headers: withSession() };
   if (body !== undefined) {
-    init.headers = { 'Content-Type': 'application/json' };
+    init.headers = withSession({ 'Content-Type': 'application/json' });
     init.body = JSON.stringify(body);
   }
   const res = await fetchWithTimeout(apiUrl(path, query), { ...init, timeoutMs, label });

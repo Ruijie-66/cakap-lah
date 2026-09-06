@@ -4,18 +4,42 @@ import { Router } from 'express';
 import multer from 'multer';
 import { getAdapter, isForcedFailure } from '../adapters/index.js';
 
+// A 20-second recording (the client's own cap, see public/js/audio/recorder.js
+// MAX_RECORDING_MS) is roughly 30 KB of Opus/WebM. The old 50 MB ceiling was
+// sized for a 30-minute file and, on a public URL, is 1500x more upload than
+// this endpoint can ever legitimately need. 4 MB leaves a very large margin
+// for a verbose codec while keeping a single request cheap to refuse.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 8, parts: 12 },
 });
 
 const router = Router();
 
 // Accept field name "audio" (primary) with "file" as an alias.
-const uploadFields = upload.fields([
+const rawUploadFields = upload.fields([
   { name: 'audio', maxCount: 1 },
   { name: 'file', maxCount: 1 },
 ]);
+
+// multer rejects an oversized or malformed upload by calling next(err), which
+// without this handler becomes express's HTML 500 page — markup the player
+// would see verbatim. Turn it into the same human-readable JSON every other
+// failure on this route uses.
+function uploadFields(req, res, next) {
+  rawUploadFields(req, res, (err) => {
+    if (!err) return next();
+    console.warn(`[stt] upload rejected: ${err.code || ''} ${err.message}`);
+    const tooBig = err.code === 'LIMIT_FILE_SIZE';
+    res.status(413).json({
+      error: tooBig
+        ? `That recording is too large (limit ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MB). Record a shorter answer and try again.`
+        : 'That upload could not be read. Please try recording again.',
+    });
+  });
+}
 
 router.post('/api/stt', uploadFields, async (req, res) => {
   const uploaded =
@@ -54,8 +78,10 @@ router.post('/api/stt', uploadFields, async (req, res) => {
       latencyMs: result.latencyMs ?? null,
     });
   } catch (err) {
+    // D10: the provider's error body never reaches the browser.
+    console.error(`[stt] upstream failure: ${err?.message || err}`);
     res.status(502).json({
-      error: `STT failed: ${err.message}`,
+      error: 'We could not transcribe that recording. Please try again.',
     });
   }
 });

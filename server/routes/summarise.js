@@ -9,6 +9,8 @@ import { Router } from 'express';
 import { getEvaluator, evaluatorFailureFlags, isMockRequest } from '../adapters/index.js';
 import { noteEvaluatorFallback } from '../adapters/evaluator.js';
 import { getScenario } from '../game/scenarios.js';
+import { registerSpoken } from '../game/spoken-text.js';
+import { sessionKey } from '../middleware/rate-limit.js';
 import { levelConfig } from '../game/branching.js';
 import {
   summaryBandFor,
@@ -62,6 +64,14 @@ router.post('/api/summarise', async (req, res) => {
 
   const overall = Math.min(100, Math.max(0, Math.round(Number(raw.overall_score) || 0)));
   const band = summaryBandFor(overall);
+  const verdict = raw.verdict || SUMMARY_VERDICTS[band];
+  const summary = raw.summary || '';
+
+  // The end screen's speak button reads the verdict on its own AND, from the
+  // "dengar" control, `verdict + ' ' + summary` joined. The client does the
+  // joining, so the server registers the joined form too or that button plays
+  // silence.
+  registerSpoken(sessionKey(req), verdict, summary, `${verdict} ${summary}`.trim());
 
   res.json({
     scenario_id: scenario.id,
@@ -70,8 +80,8 @@ router.post('/api/summarise', async (req, res) => {
     overall_score: overall,
     band,
     band_label: SUMMARY_BAND_LABELS[band],
-    verdict: raw.verdict || SUMMARY_VERDICTS[band],
-    summary: raw.summary || '',
+    verdict,
+    summary,
     strengths: Array.isArray(raw.strengths) ? raw.strengths : [],
     improvements: Array.isArray(raw.improvements) ? raw.improvements : [],
     bm_upgrades: Array.isArray(raw.bm_upgrades) ? raw.bm_upgrades : [],

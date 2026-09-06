@@ -10,6 +10,8 @@ import { Router } from 'express';
 import { getEvaluator, evaluatorFailureFlags, isMockRequest } from '../adapters/index.js';
 import { noteEvaluatorFallback } from '../adapters/evaluator.js';
 import { getScenario } from '../game/scenarios.js';
+import { registerSpoken } from '../game/spoken-text.js';
+import { sessionKey } from '../middleware/rate-limit.js';
 import {
   levelConfig,
   findStep,
@@ -79,6 +81,11 @@ router.post('/api/evaluate', async (req, res) => {
 
   // ---- Empty transcript: short-circuit before any LLM call, no penalty. ----
   if (isEmptyTranscript(transcript)) {
+    const noInputReply = 'Hah? Saya tak dengar apa-apa. Cuba cakap sekali lagi.';
+    const noInputHint = step.retry_hint || 'Cuba sebut sekali lagi — saya tak dengar apa-apa.';
+    // Both of these can reach the speakers (the NPC line always, the hint via
+    // the coach button), so /api/tts has to know we produced them.
+    registerSpoken(sessionKey(req), noInputReply, noInputHint);
     return res.json({
       result: 'no_input',
       scored: false,
@@ -91,8 +98,8 @@ router.post('/api/evaluate', async (req, res) => {
       naturalness_score: null,
       overall_score: null,
       what_worked: null,
-      improvement: step.retry_hint || 'Cuba sebut sekali lagi — saya tak dengar apa-apa.',
-      npc_reply: 'Hah? Saya tak dengar apa-apa. Cuba cakap sekali lagi.',
+      improvement: noInputHint,
+      npc_reply: noInputReply,
       branch: 'no_input',
       next_step_id: step.id,
       npc_state: (step.npc_states && step.npc_states.retry) || 'idle',
@@ -140,6 +147,11 @@ router.post('/api/evaluate', async (req, res) => {
 
   const band = bandFor(overall);
   const branchInfo = resolveBranch(scenario, step.id, level, result);
+
+  // Everything below that can be spoken: the NPC's improvised reply, and the
+  // coaching line (screens.js picks what_worked on success, improvement
+  // otherwise — register both rather than duplicating that choice here).
+  registerSpoken(sessionKey(req), raw.npc_reply, raw.what_worked, raw.improvement);
 
   res.json({
     result,

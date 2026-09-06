@@ -133,6 +133,35 @@ _Shown when the dock is idle and neither cue above is up. It says "mic" while th
 
 ---
 
+## D. New — server guardrail messages (added for the public deployment)
+
+Both of these come from the **server**, not from `public/`, and the client renders the sentence
+verbatim inside the on-screen error/notice panel. Each pairs one short BM sentence with an English
+gloss in brackets, because they can also be seen by anyone poking at the API directly.
+
+They are 👁 **shown on screen only** — never spoken.
+
+### 13. Rate limited (HTTP 429) — too many requests in a short window
+
+> Terlalu banyak permintaan. Tunggu 43 saat, kemudian tekan "Cuba lagi". (Too many requests — wait 43s and try again.)
+
+_The number is filled in at run time (the real wait in seconds). "Cuba lagi" is quoted because it is
+the literal label on the button beside this message. Source: `server/middleware/rate-limit.js`._
+
+- [o] Approved  ·  Correction: `________________________________`
+
+### 14. Voice refused a line that is not part of the game (HTTP 403)
+
+> Suara ini tidak tersedia untuk teks tersebut. (This voice only speaks lines from the game.)
+
+_A player should never see this — it fires only when something asks the voice to read text the game
+did not produce. If it ever does reach a player it appears as the "suara tak dapat dimainkan" notice
+with the line still readable on screen. Source: `server/routes/tts.js`._
+
+- [o] Approved  ·  Correction: `________________________________`
+
+---
+
 ## Anything missing?
 
 If you spot a Bahasa Melayu string on screen that is not listed here and not in `BM_REVIEW.md`,
