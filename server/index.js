@@ -50,6 +50,14 @@ app.use(scenariosRouter);
 app.use(evaluateRouter);
 app.use(summariseRouter);
 
+// The mic harness is a developer page: it prints the ?mock= / ?fail= toggles on
+// screen and drives the audio layer in isolation. Useful locally, but on a
+// public URL it is just an invitation. Hidden unless explicitly enabled.
+app.get('/harness.html', (req, res, next) => {
+  if (MOCK || process.env.EXPOSE_HARNESS === '1') return next();
+  res.status(404).json({ error: 'Not found.' });
+});
+
 app.use(express.static(publicDir));
 
 // Last line of defence: any error that escapes a route (a malformed JSON body,

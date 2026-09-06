@@ -9,6 +9,7 @@
 
 import test, { before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import app from '../server/index.js';
 import {
@@ -297,16 +298,35 @@ test('EVERY authored line, in all three scenarios at all three levels, is speaka
 });
 
 test("the client's own fixed spoken strings are allowed", () => {
-  // Mirrors public/js/game/scoring.js BAND_FLAVOUR and engine.js localSummary.
-  for (const line of [
-    'Power! Macam orang local dah.',
-    'Boleh! Mesej sampai.',
-    'Hampir — sikit lagi.',
-    'Bahasa Melayu belum give up on you. Cuba lagi.',
-    'Dah boleh cakap.',
-    'Hampir dah — cuba sekali lagi.',
-  ]) {
-    assert.ok(isSpeakable(line).allowed, `client fixed line: ${line}`);
+  // Read the literals out of the CLIENT SOURCE rather than restating them.
+  // A hardcoded copy here would be a third copy of the same strings: edit
+  // public/js/game/scoring.js and both the server allowlist and this test stay
+  // stale and still pass, and the line goes quiet in the demo instead of
+  // failing the build. Parsing the source is what makes this a drift guard.
+  const readLiterals = (file, locator) => {
+    const src = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    const block = src.match(locator);
+    assert.ok(
+      block,
+      `could not find the spoken literals in ${file}. If they moved, update this ` +
+        `locator AND server/game/spoken-text.js CLIENT_FIXED_LINES — otherwise the ` +
+        `line plays as silence.`,
+    );
+    return [...block[0].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map((m) => m[1].replace(/\\'/g, "'"));
+  };
+
+  const lines = [
+    ...readLiterals('public/js/game/scoring.js', /const BAND_FLAVOUR = \{[\s\S]*?\};/),
+    ...readLiterals('public/js/game/engine.js', /verdict:[^\n]*\n/),
+  ];
+
+  assert.ok(lines.length >= 6, `sanity: extracted only ${lines.length} client lines`);
+  for (const line of lines) {
+    assert.ok(
+      isSpeakable(line).allowed,
+      `client speaks "${line}" but the allowlist refuses it — add it to ` +
+        `CLIENT_FIXED_LINES in server/game/spoken-text.js, or it plays as silence.`,
+    );
   }
 });
 
