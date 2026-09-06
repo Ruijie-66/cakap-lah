@@ -68,9 +68,9 @@
       "task_en": "She needs a specific time. Give her one — and make sure it works with her 4pm meeting.",
       "task_ms": "Dia perlukan masa yang tepat. Bagi satu masa — dan pastikan ia sempat sebelum meeting pukul empat dia.",
       "expected_semantics": [
-        "gives a specific time rather than a vague one",
-        "the time given is before the 4pm meeting",
-        "commits clearly instead of hedging"
+        "names an actual time, not just a vague stretch of the day",
+        "the time named falls before Kak Ana's four o'clock meeting",
+        "gives Kak Ana a straight answer instead of dodging the question"
       ],
       "key_concepts": ["sebelum pukul", "pukul tiga", "pukul dua", "hantar", "sempat"],
       "sample_answers": [

@@ -45,9 +45,42 @@ Score each axis 0-100 by answering ONLY its own question. Do not let one axis pu
 
 Your \`what_worked\` and \`improvement\` must be consistent with these four numbers: never tell a learner they spoke clearly while scoring comprehensibility low, and never score comprehensibility low for an answer you just called clear.
 
+## STEP ZERO — CHECK THE REQUIREMENTS BEFORE YOU SCORE ANYTHING
+
+\`requirement_checks\` is the FIRST field you produce, before any number, and the two TASK scores must then agree with it. Emit exactly ONE entry per item in \`expected_semantics\`, in the same order, with that item copied verbatim into \`requirement\`.
+
+- \`finding\` — one SENTENCE OF REASONING that starts from what the learner actually said and ends in the verdict. Quote their words, then say what those words MEAN for this requirement and why that is or is not enough. A \`finding\` that merely copies \`stt_transcript\` back is not a check and is not acceptable — it is the same as not checking at all, and it is how a correct answer gets marked wrong.
+- \`verdict\` — \`met\`, \`partly\` or \`missing\`.
+
+**Where a requirement involves a COMPARISON — a time, a price, a quantity, a date, a duration, an amount — do the comparison out loud in \`finding\` before you judge it.** Name the value the learner gave. Name the value it is compared against, taken from \`world_facts\`, \`npc_prompt\` or \`conversation_history\`. Say which is earlier/later, smaller/larger. Then state the outcome. For example: "learner said pukul satu = 1pm; the meeting in \`world_facts\` is pukul empat = 4pm; 1pm is three hours EARLIER than 4pm, so the time is before the meeting — met." Decide it by the VALUES, never by whether the sentence contained a comparison word. A bare time that is earlier satisfies a "before X" requirement completely; a time at or after X fails it, however it is phrased. "Before X" means ANY moment earlier than X — the morning of the same day counts, and so does a time earlier than one the learner themselves named on a previous turn. A learner who names an EARLIER time than they promised before has answered the question and improved on their promise; that is not a contradiction and never a reason to mark anything down.
+
+**A requirement is satisfied by MEANING, in ANY wording.** Two answers that convey the same thing get the same verdict and the same scores, whatever words they used, whatever their length, and however little they resemble \`sample_answers\`. Never make a specific word, particle, verb or sentence shape a condition for \`met\`.
+
+**The ORDER in which the learner mentions things is not a requirement unless a requirement says so.** When \`expected_semantics\` lists several details, each one is \`met\` as soon as that detail is present, wherever it appears in the sentence and in whatever sequence the learner chose. Only mark order down when a requirement is explicitly about sequence.
+
+**A direct answer to a direct question IS the commitment.** When the NPC asked a closed question — "pukul berapa?", "berapa harga?", "yang mana satu?" — and the learner supplies the value asked for, that requirement is \`met\`. They do NOT additionally need a hedge-free framing word, a verb of delivery, a restatement of the task, a full sentence, or a repeat of anything already established earlier in \`conversation_history\`. "Pukul satu petang." is a complete, committed answer to "pukul berapa?" — mark it \`met\` and score it as such.
+
+**Read the answer IN THE CONTEXT OF THE QUESTION, and fill in the obvious.** A value spoken in reply to a question is understood to be the answer to that question; the learner does not have to spell out what it refers to, restate the object, or name the action again. "Pukul sepuluh pagi ni dah siap," answering "petang ni tu pukul berapa?", means the report will be ready at 10am and that 10am is the time being promised — read it that way and mark the time requirements against 10am. Demanding that the learner also say the delivery verb, the object, or the deadline back to you is grading the SHAPE of the sentence, which is exactly what you must not do.
+
+**\`missing\` vs \`partly\`.** \`missing\` is only for a requirement the learner did not address at all, or addressed and got wrong. A requirement they addressed imperfectly — an approximate value ("dalam pukul dua camtu", "lebih kurang tiga"), a value plus a softener, a slightly incomplete commitment — is \`partly\`, never \`missing\`: it names a value, which is the thing being asked for, and it is worlds away from "petang ni". Do not stack the same small imperfection against every requirement in the list; judge each one on its own question.
+
+**Never contradict your own \`finding\`.** If the \`finding\` concedes that this requirement's own question is answered — "this is before 4pm", "this is a specific time", "they did say when" — then the verdict is \`met\`. Full stop. A reservation you are carrying about a DIFFERENT requirement does not belong here and must not turn a satisfied requirement into \`missing\`. A \`finding\` that says "yes, but…" and then records \`missing\` is always an error; write \`met\` and let the other requirement carry your reservation.
+
+**Score calibration against the checklist.** All \`met\` → \`intent_pass\` true, \`intent_score\` and \`semantic_score\` 85–100. Mostly \`met\` with one \`partly\` → typically 65–85, and \`intent_pass\` is still true when the task was substantially done. A requirement that is \`missing\` because the learner said nothing about it or got it wrong → \`intent_pass\` false and the TASK axes below 40.
+
+**Hedging means VAGUENESS, not BREVITY.** A hedge is an answer that refuses to pin the thing down: "petang ni", "nanti", "kejap lagi", "tengok macam mana", "secepat mungkin", "insyaAllah" with no value attached. A short, blunt, specific answer is the OPPOSITE of hedging and must never be marked down as one. Terseness is not evasion, and politeness particles ("kak", "lah", "je") do not weaken a commitment.
+
+**An approximator wrapped around a REAL VALUE is not vagueness.** "dalam pukul dua camtu", "lebih kurang pukul tiga", "around 2" all name a clock time, and the person listening can plan around it — that is what "specific" is for. Treat these as \`met\`, or at the very worst \`partly\`; they are not remotely the same answer as "petang ni", which names nothing at all. The test for vagueness is simple: is there a VALUE in the sentence? If yes, it is not vague.
+
+**The mirror of that rule: supplying the requested value but the WRONG value is a task FAILURE, not a partial success.** A time on the wrong side of the deadline, a quantity that does not fit, an answer that contradicts \`world_facts\` — the learner produced the right SHAPE of answer and got the substance wrong, and the substance is the task. When a comparison comes out against the learner, that requirement is \`missing\` (not \`partly\`), \`intent_pass\` is false, and \`intent_score\` stays low. Being specific was the easy half; do not pay for it twice.
+
+**Then score.** If every requirement is \`met\`, \`intent_pass\` is true and both \`intent_score\` and \`semantic_score\` belong in the 85–100 range — an answer that does everything the task asked scores like it, even if it did so in four words. Reserve the middle for genuinely partial answers and the bottom for answers that missed or contradicted the requirements. Never let a \`met\` checklist sit above a failing score, or the reverse.
+
 ## THE REST OF THE RULES
 
 - Never require exact wording. \`sample_answers\` illustrate the *range* of acceptable answers — they are NOT a match list, and an answer unlike all of them can still score 100.
+- **\`sample_answers\` are the single biggest trap in this job.** After reading four examples it is very easy to start grading by how closely an answer RESEMBLES them — same length, same connective, same verb — instead of by what it MEANS. That is exactly wrong, and it is the one failure that breaks this product: this game judges meaning, never wording. Before you score, ask yourself whether you are marking an answer down for anything other than missing meaning — a missing word that appears in the samples, a shape you did not expect, a sentence shorter than the examples. If so, that is not a defect in the answer; put the score back up. An answer that carries all the required meaning in a form no sample used deserves the SAME score as the closest sample would get.
+- \`key_concepts\` and \`fallback_concepts\` are hints for a keyword-matching fallback scorer that runs when you are unavailable. They are NOT your criteria. Do not require their words, and do not reward an answer for containing them.
 - Judge meaning and task completion first; grammar last.
 - The transcript is from speech recognition. Spelling/punctuation artifacts are not the learner's fault.
 - Code-switch policy is \`{allowed_code_switch}\`: **beginner** — Manglish **passes** if the task is done; offer the BM replacement as coaching, never failure. **intermediate** — may pass; reduce \`naturalness_score\` where a normal BM alternative exists. **advanced** — expect predominantly BM except proper nouns and technical terms. This axis is about *how much BM*, not formality. **Never penalise casual register.**
@@ -132,6 +165,25 @@ const scoreProp = { type: 'integer', minimum: 0, maximum: 100 };
 export const TURN_SCHEMA = {
   type: 'object',
   properties: {
+    // FIRST on purpose. Structured output is generated in property order, so
+    // this is the one field the model writes BEFORE any number — one line per
+    // `expected_semantics` item, with the comparison spelled out. The scores
+    // then have something to be consistent with. Discarded by
+    // `validateTurnOutput`: it never reaches the client, it exists to make the
+    // model check the meaning instead of eyeballing the phrasing.
+    requirement_checks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          requirement: { type: 'string' },
+          finding: { type: 'string' },
+          verdict: { type: 'string', enum: ['met', 'partly', 'missing'] },
+        },
+        required: ['requirement', 'finding', 'verdict'],
+        additionalProperties: false,
+      },
+    },
     intent_pass: { type: 'boolean' },
     intent_score: scoreProp,
     semantic_score: scoreProp,
@@ -145,6 +197,7 @@ export const TURN_SCHEMA = {
     branch: { type: 'string', enum: ['success', 'partial', 'retry'] },
   },
   required: [
+    'requirement_checks',
     'intent_pass',
     'intent_score',
     'semantic_score',

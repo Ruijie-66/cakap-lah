@@ -691,3 +691,209 @@ test('stripAnswerKeyLeak does not emit a half-finished sentence', () => {
   });
   assert.ok(!/,\s+[A-Z]/.test(tidy.reply), `stray comma in ${JSON.stringify(tidy.reply)}`);
 });
+
+// ---------------------------------------------------------------------------
+// Meaning, not wording — the scoring-correctness regression (office_01/pin_down)
+// ---------------------------------------------------------------------------
+// A live player hit this: at office_01/pin_down Kak Ana asks "petang ni tu
+// pukul berapa?" with a 4pm meeting in `world_facts`, and "Pukul satu petang."
+// scored 40/retry while "Sebelum pukul tiga saya hantar." scored 100. The
+// evaluator had drifted onto the SHAPE of `sample_answers` — the literal word
+// "sebelum" and an explicit delivery verb — instead of the meaning. 1pm is
+// specific and three hours before the meeting; it is a pass. Worse,
+// "Pukul dua setengah kak." is very nearly `sample_answers[1]` and scored 59.
+//
+// The fix is in the prompt contract, not in code and not in a special case for
+// this step: the model now emits a `requirement_checks` checklist BEFORE any
+// number, one entry per `expected_semantics` item, spelling the comparison out
+// against `world_facts`; plus explicit rules that a direct answer to a direct
+// question IS a commitment, that hedging means vagueness rather than brevity,
+// and that resembling a sample answer is never a criterion.
+
+test('the turn prompt makes the model check the requirements before it scores', () => {
+  const p = TURN_SYSTEM_PROMPT;
+  assert.match(p, /STEP ZERO/);
+  assert.match(p, /`requirement_checks` is the FIRST field you produce, before any number/);
+  // one entry per expected_semantics item, in order
+  assert.match(p, /ONE entry per item in `expected_semantics`, in the same order/);
+  // and the comparison is spelled out from world_facts, not inferred from phrasing
+  assert.match(p, /do the comparison out loud/);
+  assert.match(p, /Decide it by the VALUES, never by whether the sentence contained a comparison word/);
+});
+
+test('the turn prompt separates commitment from wording, and hedging from brevity', () => {
+  const p = TURN_SYSTEM_PROMPT;
+  assert.match(p, /A direct answer to a direct question IS the commitment/);
+  assert.match(p, /Hedging means VAGUENESS, not BREVITY/);
+  assert.match(p, /An approximator wrapped around a REAL VALUE is not vagueness/);
+  // the mirror: right shape, wrong value is a failure, not a partial
+  assert.match(p, /supplying the requested value but the WRONG value is a task FAILURE/);
+  // and a satisfied requirement cannot be voted down by a different one
+  assert.match(p, /Never contradict your own `finding`/);
+});
+
+test('the turn prompt forbids grading by resemblance to sample_answers', () => {
+  const p = TURN_SYSTEM_PROMPT;
+  assert.match(p, /`sample_answers` are the single biggest trap in this job/);
+  assert.match(p, /this game judges meaning, never wording/);
+  assert.match(p, /the SAME score as the closest sample would get/);
+  // key_concepts belong to the fallback scorer, not to the model's criteria
+  assert.match(p, /They are NOT your criteria/);
+});
+
+test('requirement_checks is generated first and never reaches the client', () => {
+  // Structured output is emitted in property order, so the checklist must be
+  // the first property for it to function as reasoning-before-scoring.
+  assert.equal(Object.keys(TURN_SCHEMA.properties)[0], 'requirement_checks');
+  assert.equal(TURN_SCHEMA.required[0], 'requirement_checks');
+  // It is the answer key restated. `validateTurnOutput` drops it on the floor.
+  const out = validateTurnOutput({
+    ...GOOD_TURN,
+    requirement_checks: [{ requirement: 'gives a time', finding: '1pm < 4pm', verdict: 'met' }],
+  });
+  assert.equal('requirement_checks' in out, false);
+  assert.ok(!JSON.stringify(out).includes('1pm < 4pm'));
+});
+
+// --- Live regression: the four reported cases, plus the vague-answer trap ----
+//
+// These call the real provider, so they are skipped unless a key is configured
+// — the inverse of `skipIfKey` above, and the reason `npm test` stays hermetic
+// and green with no API key.
+
+const skipIfNoKey = hasLlmKey()
+  ? {}
+  : { skip: `no ${LLM_PROVIDER} API key configured — live grading assertions skipped` };
+
+const PIN_DOWN_HISTORY = [
+  {
+    npc: 'Wei, report semalam dah siap ke?',
+    player: 'Belum siap lagi kak, saya tengah buat. Petang ni saya hantar.',
+  },
+];
+
+/** Score one transcript through the real evaluator, exactly as the route does. */
+async function gradeLive({ scenarioId, stepId, level, history, transcript }) {
+  const sc = getScenario(scenarioId);
+  const st = findStep(sc, stepId);
+  const raw = await liveEvaluate({
+    scenario: sc,
+    step: st,
+    level,
+    levelConfig: { allowed_code_switch: sc.levels[String(level)].allowed_code_switch },
+    transcript,
+    sttConfidence: 0.9,
+    conversationHistory: history,
+  });
+  const overall = computeOverall(raw);
+  return { overall, intentPass: raw.intent_pass, success: overall >= 75 && raw.intent_pass, raw };
+}
+
+// band, not exact number: the grader is an LLM and ±5 is within its noise.
+const PIN_DOWN_CASES = [
+  // A bare specific time that is plainly before the meeting. This is the bug:
+  // it scored 40/retry because it lacked the word "sebelum" and a delivery verb.
+  { transcript: 'Pukul satu petang.', band: 'success' },
+  // Almost verbatim `sample_answers[1]` — it scored 59/partial.
+  { transcript: 'Pukul dua setengah kak.', band: 'success' },
+  // The one that always worked, kept as the control.
+  { transcript: 'Sebelum pukul tiga saya hantar.', band: 'success' },
+  // Specific, committed, and on the WRONG SIDE of the 4pm meeting. Getting the
+  // shape of the answer right does not earn a pass when the value is wrong.
+  { transcript: 'Pukul lima kak.', band: 'fail' },
+];
+
+for (const { transcript, band } of PIN_DOWN_CASES) {
+  test(`live: office_01/pin_down "${transcript}" -> ${band}`, skipIfNoKey, async () => {
+    const g = await gradeLive({
+      scenarioId: 'office_01',
+      stepId: 'pin_down',
+      level: 2,
+      history: PIN_DOWN_HISTORY,
+      transcript,
+    });
+    if (band === 'success') {
+      assert.ok(g.intentPass, `expected intent_pass for "${transcript}"`);
+      assert.ok(g.success, `expected success, got ${g.overall} for "${transcript}"`);
+    } else {
+      assert.ok(!g.success, `expected NOT success, got ${g.overall} for "${transcript}"`);
+      assert.ok(g.overall < 75, `expected below the pass band, got ${g.overall}`);
+    }
+  });
+}
+
+test('live: the vague-answer trap still costs more than a specific time', skipIfNoKey, async () => {
+  // The fix must not be "make everything pass". "Petang ni lah kak." names no
+  // time at all — it is the answer Kak Ana just refused — and must land clearly
+  // below a bare specific time, which is the answer she asked for.
+  const vague = await gradeLive({
+    scenarioId: 'office_01',
+    stepId: 'pin_down',
+    level: 2,
+    history: PIN_DOWN_HISTORY,
+    transcript: 'Petang ni lah kak.',
+  });
+  const specific = await gradeLive({
+    scenarioId: 'office_01',
+    stepId: 'pin_down',
+    level: 2,
+    history: PIN_DOWN_HISTORY,
+    transcript: 'Pukul satu petang.',
+  });
+  assert.ok(!vague.success, `vague answer must not pass (got ${vague.overall})`);
+  assert.ok(vague.overall < 55, `vague answer belongs in the retry band (got ${vague.overall})`);
+  assert.ok(
+    specific.overall - vague.overall >= 20,
+    `a specific time must score clearly higher than "petang ni" (${specific.overall} vs ${vague.overall})`,
+  );
+});
+
+// --- The same trap in the other two scenarios -------------------------------
+// The general defect is grading by resemblance to `sample_answers`. Each of
+// these says exactly what its step asks for, in a form no sample answer uses.
+
+const OFF_SAMPLE_CASES = [
+  {
+    name: 'mamak_01/order — "jangan manis sangat" instead of "kurang manis"',
+    scenarioId: 'mamak_01',
+    stepId: 'order',
+    history: [],
+    transcript: 'Teh tarik satu bang, jangan manis sangat ya.',
+  },
+  {
+    name: 'mall_01/confirm — the directions read back in a different order',
+    scenarioId: 'mall_01',
+    stepId: 'confirm',
+    // Only the PREVIOUS turn. The directions themselves are this step's own
+    // `tts_prompt`, which the evaluator receives as `npc_prompt` — putting them
+    // in the history too would be a turn the game never sends.
+    history: [
+      { npc: 'Ya? Boleh saya tolong?', player: 'Maaf bang, food court kat mana ya?' },
+    ],
+    transcript: 'Belok kiri lepas naik eskalator sampai atas, tingkat empat kan bang?',
+  },
+];
+
+for (const c of OFF_SAMPLE_CASES) {
+  test(`live: ${c.name} passes on meaning`, skipIfNoKey, async () => {
+    const g = await gradeLive({ ...c, level: 2 });
+    assert.ok(g.intentPass, `expected intent_pass, got ${JSON.stringify(g.raw)}`);
+    assert.ok(g.success, `expected success, got ${g.overall}`);
+  });
+}
+
+test('live: a fluent off-task answer still fails the task axes', skipIfNoKey, async () => {
+  // The control for the two above: this must NOT pass, or the scenarios are
+  // simply grading everything as correct.
+  const g = await gradeLive({
+    scenarioId: 'mamak_01',
+    stepId: 'order',
+    level: 2,
+    history: [],
+    transcript: 'Bang, panas gila hari ni kan.',
+  });
+  assert.ok(!g.success, `expected NOT success, got ${g.overall}`);
+  // ...while the two LANGUAGE axes stay high — they never depended on the task.
+  assert.ok(g.raw.comprehensibility_score >= 60, 'comprehensibility must not be crushed');
+  assert.ok(g.raw.naturalness_score >= 60, 'naturalness must not be crushed');
+});
