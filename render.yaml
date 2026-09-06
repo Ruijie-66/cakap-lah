@@ -34,6 +34,11 @@ services:
         value: "1"
       - key: LLM_PROVIDER
         value: openai
+      # package.json asks for node >=24, which is a RANGE — pin the actual
+      # version here so Render never silently builds on its default (22.x).
+      # Keep this in step with the Dockerfile's `FROM node:24-slim`.
+      - key: NODE_VERSION
+        value: "24"
       # Secrets — set these in the Render dashboard, never here.
       - key: REVOLAB_API_KEY
         sync: false
