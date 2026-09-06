@@ -90,7 +90,7 @@
     {
       "id": "upsell",
       "levels": [3],
-      "tts_prompt": "Ha, dah betul. Nak tambah apa-apa tak? Roti canai baru masak ni, panas-panas.",
+      "tts_prompt": "Ha, dah betul. Nak tambah apa-apa tak? Roti telur? Cheese Naan?",
       "task_en": "You do not want anything else. Turn him down politely — do not just say no.",
       "task_ms": "Anda tak nak apa-apa lagi. Tolak dengan sopan — jangan sekadar cakap tidak.",
       "expected_semantics": [

@@ -23,7 +23,7 @@ for that character. Mark anything that reads as textbook, stiff, or just wrong, 
 
 > Pukul sepuluh malam. Anda di mamak dengan kawan-kawan. Abang mamak datang ambil pesanan.
 
-- [ ] Approved as-is  
+- [o] Approved as-is  
 - Correction: `________________________________________`
 
 ### Re-prompt line  ·  Abang Mamak — 🔊 spoken aloud by TTS
@@ -32,7 +32,7 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Hah? Bang cakap apa tu? Sekali lagi.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### Step 1 — `order`  ·  levels 1/2/3  ·  Abang Mamak
 
@@ -40,26 +40,26 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Ya boss, nak minum apa?
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Pesan satu teh tarik, dan minta kurang manis.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Sebut minuman yang anda mahu, dan cara anda mahu ia dibuat.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Saya nak teh tarik satu, kurang manis.
-- [ ] Boleh bagi satu teh tarik kurang manis?
-- [ ] Teh tarik satu boss, jangan manis sangat.
-- [ ] Bang, teh tarik satu ya, kurang gula.
+- [o] Saya nak teh tarik satu, kurang manis.
+- [o] Boleh bagi satu teh tarik kurang manis?
+- [o] Teh tarik satu boss, jangan manis sangat.
+- [o] Bang, teh tarik satu ya, kurang gula.
 
 - Would a real person say something else here? `________________________________`
 
@@ -69,26 +69,26 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Ni dia! Milo ais satu, sejuk-sejuk.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Itu bukan pesanan anda. Beritahu dia dengan sopan, dan sebut semula apa yang anda pesan.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Beritahu abang tu minuman ini bukan yang anda pesan, kemudian sebut semula pesanan anda.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Maaf boss, saya pesan teh tarik kurang manis tadi.
-- [ ] Eh bang, ini Milo. Saya minta teh tarik tadi.
-- [ ] Bang, ini bukan pesanan saya. Saya nak teh tarik.
-- [ ] Sorry boss, saya order teh tarik, bukan Milo.
+- [o] Maaf boss, saya pesan teh tarik kurang manis tadi.
+- [o] Eh bang, ini Milo. Saya minta teh tarik tadi.
+- [o] Bang, ini bukan pesanan saya. Saya nak teh tarik.
+- [o] Sorry boss, saya order teh tarik, bukan Milo.
 
 - Would a real person say something else here? `________________________________`
 
@@ -96,28 +96,28 @@ _Played when the generated reply had to be discarded — the character simply as
 
 **Abang Mamak says** — 🔊 spoken aloud by TTS
 
-> Ha, dah betul. Nak tambah apa-apa tak? Roti canai baru masak ni, panas-panas.
+> Ha, dah betul. Nak tambah apa-apa tak? Roti telur? Cheese Naan?
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Nezriq's correction — APPLIED 6 Sep 2026.
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Anda tak nak apa-apa lagi. Tolak dengan sopan — jangan sekadar cakap tidak.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Cuba tolak dengan lembut — ucap terima kasih atau bagi sebab ringkas.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Tak apa bang, terima kasih. Minum je cukup.
-- [ ] Lain kali lah bang, saya dah makan tadi.
-- [ ] Tak payah bang, teh tarik je. Terima kasih ya.
-- [ ] Cukup lah ni, terima kasih boss.
+- [o] Tak apa bang, terima kasih. Minum je cukup.
+- [o] Lain kali lah bang, saya dah makan tadi.
+- [o] Tak payah bang, teh tarik je. Terima kasih ya.
+- [o] Cukup lah ni, terima kasih boss.
 
 - Would a real person say something else here? `________________________________`
 
@@ -125,7 +125,7 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Aduh, salah meja tadi! Maaf ya boss. Datang lagi tau.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ---
 
@@ -138,7 +138,7 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Anda di dalam sebuah mall yang besar. Dah pusing dua kali, food court masih tak jumpa. Ada seorang abang guard berdiri dekat eskalator.
 
-- [ ] Approved as-is  
+- [o] Approved as-is  
 - Correction: `________________________________________`
 
 ### Re-prompt line  ·  Abang Guard — 🔊 spoken aloud by TTS
@@ -147,7 +147,7 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Maaf encik, boleh ulang sekali lagi?
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### Step 1 — `ask`  ·  levels 1/2/3  ·  Abang Guard
 
@@ -155,26 +155,26 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Ya? Boleh saya tolong?
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Tanya dia dengan sopan di mana food court.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Tanya di mana food court itu — cuba mula dengan 'Maaf bang' atau 'Tumpang tanya'.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Maaf bang, food court kat mana ya?
-- [ ] Bang, macam mana nak pergi ke food court?
-- [ ] Excuse me, saya nak cari food court. Kat tingkat berapa ya?
-- [ ] Tumpang tanya bang, food court sebelah mana?
+- [o] Maaf bang, food court kat mana ya?
+- [o] Bang, macam mana nak pergi ke food court?
+- [o] Excuse me, saya nak cari food court. Kat tingkat berapa ya?
+- [o] Tumpang tanya bang, food court sebelah mana?
 
 - Would a real person say something else here? `________________________________`
 
@@ -184,26 +184,26 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Oh, food court kat tingkat empat. Naik eskalator ni sampai atas, lepas tu belok kiri. Ada papan tanda besar, tak boleh miss punya.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Ulang semula arah tadi untuk pastikan anda faham — tingkat, eskalator, belok mana.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Sebut semula tiga perkara: tingkat berapa, naik apa, dan belok ke mana.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Jadi naik eskalator sampai tingkat empat, lepas tu belok kiri?
-- [ ] Okay, tingkat empat, naik eskalator, belok kiri ya?
-- [ ] Naik atas tingkat empat, keluar eskalator belok kiri. Betul tak bang?
-- [ ] Tingkat empat, belok kiri lepas eskalator. Terima kasih bang.
+- [o] Jadi naik eskalator sampai tingkat empat, lepas tu belok kiri?
+- [o] Okay, tingkat empat, naik eskalator, belok kiri ya?
+- [o] Naik atas tingkat empat, keluar eskalator belok kiri. Betul tak bang?
+- [o] Tingkat empat, belok kiri lepas eskalator. Terima kasih bang.
 
 - Would a real person say something else here? `________________________________`
 
@@ -213,32 +213,32 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Dik, dik. Sorry ya. Makcik nak tanya, food court kat mana ek? Makcik dah pusing-pusing tak jumpa.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Makcik's re-prompt line** — 🔊 spoken aloud by TTS
 
 > Aduh, makcik tak berapa faham la dik. Cuba cakap sekali lagi?
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Sekarang orang pula tanya anda. Bagi arah yang anda baru dapat tadi.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Bagi arah ikut turutan — naik apa dulu, ke tingkat berapa, lepas tu belok mana.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Makcik naik eskalator ni sampai tingkat empat, lepas tu belok kiri. Ada papan tanda besar.
-- [ ] Tingkat empat makcik. Naik eskalator sana, keluar je belok kiri.
-- [ ] Senang je makcik — naik eskalator ni, tingkat empat, kemudian belok kiri terus nampak.
-- [ ] Makcik pergi tingkat empat naik eskalator tu, lepas tu kiri.
+- [o] Makcik naik eskalator ni sampai tingkat empat, lepas tu belok kiri. Ada papan tanda besar.
+- [o] Tingkat empat makcik. Naik eskalator sana, keluar je belok kiri.
+- [o] Senang je makcik — naik eskalator ni, tingkat empat, kemudian belok kiri terus nampak.
+- [o] Makcik pergi tingkat empat naik eskalator tu, lepas tu kiri.
 
 - Would a real person say something else here? `________________________________`
 
@@ -246,13 +246,13 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Sama-sama! Kalau sesat lagi, cari abang tau.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### Closing line  ·  levels 3  ·  Makcik — 🔊 spoken aloud by TTS
 
 > Terima kasih ya dik! Baik betul orang muda zaman sekarang.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ---
 
@@ -265,16 +265,16 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Pagi Isnin. Anda baru sampai pejabat, kopi pun belum habis. Kak Ana berhenti depan meja anda.
 
-- [ ] Approved as-is  
+- [o] Approved as-is  
 - Correction: `________________________________________`
 
 ### Re-prompt line  ·  Kak Ana — 🔊 spoken aloud by TTS
 
 _Played when the generated reply had to be discarded — the character simply asks again._
 
-> Kejap. Kamu maksud macam mana ni?
+> Macam mana dengan report itu? Dah siap ke?
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Nezriq's correction — APPLIED 6 Sep 2026.
 
 ### Step 1 — `status`  ·  levels 1/2/3  ·  Kak Ana
 
@@ -282,26 +282,26 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Wei, report semalam dah siap ke?
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Report belum siap. Beritahu dengan jujur, terangkan sampai mana, dan bagitahu bila anda akan hantar.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Cakap tiga perkara: belum siap, sampai mana anda dah buat, dan bila anda akan hantar.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Belum siap lagi. Saya tengah buat sekarang, petang ni saya hantar.
-- [ ] Maaf kak, belum habis. Tinggal sikit je, nanti petang saya email.
-- [ ] Belum lagi kak. Saya dah buat separuh, hari ni juga saya siapkan.
-- [ ] Sorry kak, tak sempat semalam. Saya sambung pagi ni, petang ni siap.
+- [o] Belum siap lagi. Saya tengah buat sekarang, petang ni saya hantar.
+- [o] Maaf kak, belum habis. Tinggal sikit je, nanti petang saya email.
+- [o] Belum lagi kak. Saya dah buat separuh, hari ni juga saya siapkan.
+- [o] Sorry kak, tak sempat semalam. Saya sambung pagi ni, petang ni siap.
 
 - Would a real person say something else here? `________________________________`
 
@@ -311,26 +311,26 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Petang ni tu pukul berapa? Saya ada meeting pukul empat, kena bawa report tu.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `_"Hari ini to replace "petang ini"__`
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Dia perlukan masa yang tepat. Bagi satu masa — dan pastikan ia sempat sebelum meeting pukul empat dia.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Bagi satu masa yang tepat, dan pastikan ia sebelum pukul empat.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Boleh, sebelum pukul tiga saya hantar.
-- [ ] Pukul dua setengah kak, sempat lah untuk meeting.
-- [ ] Saya hantar sebelum pukul tiga, jadi kak ada masa nak baca dulu.
-- [ ] Confirm sebelum pukul tiga kak, saya email terus.
+- [o] Boleh, sebelum pukul tiga saya hantar.
+- [o] Pukul dua setengah kak, sempat lah untuk meeting.
+- [o] Saya hantar sebelum pukul tiga, jadi kak ada masa nak baca dulu.
+- [o] Confirm sebelum pukul tiga kak, saya email terus.
 
 - Would a real person say something else here? `________________________________`
 
@@ -340,34 +340,34 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Okay. Eh, satu lagi — client call pukul sebelas ni saya tak boleh masuk. Boleh tolong ambil alih tak?
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Task hint (Malay, level 2)** — 👁 shown on screen only
 
 > Pagi anda dah padat. Sama ada terima dan beritahu apa yang anda tangguh, atau tolak dan tawarkan cara lain untuk membantu.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Retry hint** — 👁 shown on screen only
 
 > Bagi jawapan yang jelas — terima atau tolak — dan cakap kesannya pada report tadi.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 **Sample answers** — shown to the evaluator as examples of acceptable range:
 
-- [ ] Boleh kak, tapi kalau macam tu report tu saya hantar pukul empat lah ya.
-- [ ] Aduh kak, kalau saya masuk call tu report lambat sikit. Boleh minta Aiman ganti?
-- [ ] Boleh je, tapi saya kena tangguh report sampai lepas lunch.
-- [ ] Saya rasa tak sempat kak. Macam mana kalau saya hantar nota untuk kak guna dalam call?
+- [o] Boleh kak, tapi kalau macam tu report tu saya hantar pukul empat lah ya.
+- [o] Aduh kak, kalau saya masuk call tu report lambat sikit. Boleh minta Aiman ganti?
+- [o] Boleh je, tapi saya kena tangguh report sampai lepas lunch.
+- [o] Saya rasa tak sempat kak. Macam mana kalau saya hantar nota untuk kak guna dalam call?
 
 - Would a real person say something else here? `________________________________`
 
 ### Closing line  ·  Kak Ana — 🔊 spoken aloud by TTS
 
-> Okay, saya pegang janji ni tau. Jangan esok pula.
+> Okay, pastikan report itu siap untuk saya semak sebelum meeting ya.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Nezriq's correction — APPLIED 6 Sep 2026.
 
 ---
 
@@ -377,7 +377,7 @@ _Played when the generated reply had to be discarded — the character simply as
 
 > Hah? Macam mana tu? Cuba cakap sekali lagi.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ---
 

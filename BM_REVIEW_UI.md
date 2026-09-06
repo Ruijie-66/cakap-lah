@@ -34,13 +34,13 @@ load-bearing copy in the interface.
 
 _Set in caps at 24–28px. Appears the moment the NPC stops talking and stays until the player presses._
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 2. Strip sub-line — directly under the headline
 
 > tekan CAKAP, lepas tu cakap
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 3. Badge in the phase row — the amber pill top-right of the dock
 
@@ -48,7 +48,7 @@ _Set in caps at 24–28px. Appears the moment the NPC stops talking and stays un
 
 _Sits in the same slot the pink `RECORDING` badge uses while recording. Caps, 11px, letterspaced._
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 4. Mic hint — the small line under the microphone button
 
@@ -56,13 +56,13 @@ _Sits in the same slot the pink `RECORDING` badge uses while recording. Caps, 11
 
 _Also used as the button's `aria-label`, so it is what a screen reader announces._
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 5. Phase line — normal turn
 
 > Giliran anda — tekan CAKAP dan jawab.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 6. Phase line — after a capture with nothing in it
 
@@ -71,19 +71,19 @@ _Also used as the button's `aria-label`, so it is what a screen reader announces
 _Shown when the player stopped almost immediately, or said nothing. It costs no marks and no score is
 shown — the "tiada penalti" has to land, or the player thinks they were punished._
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 7. Phase line — the server asked for another attempt at the same step
 
 > Cuba sekali lagi — tekan CAKAP bila anda sedia.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 8. Phase line — after a technical error, offering the same step again
 
 > Tekan CAKAP untuk cuba giliran ini sekali lagi.
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ---
 
@@ -102,7 +102,7 @@ the two states keep sounding like one idea.
 _Set at 21px. "Potong" as in cutting into someone's speech — please confirm this reads as
 interrupting, not as queue-cutting or literal cutting._
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 10. Mic hint while the NPC speaks
 
@@ -110,13 +110,13 @@ interrupting, not as queue-cutting or literal cutting._
 
 _Also the button's `aria-label` in that state._
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ### 11. Strip sub-line — shown once per session, the first time an NPC speaks
 
 > tak payah tunggu dia habis cakap
 
-- [ ] Approved  ·  Correction: `________________________________`
+- [o] Approved  ·  Correction: `________________________________`
 
 ---
 
@@ -129,7 +129,7 @@ _Also the button's `aria-label` in that state._
 _Shown when the dock is idle and neither cue above is up. It says "mic" while the button now reads
 "CAKAP" — worth deciding whether to align it._
 
-- [ ] Approved as-is  ·  Correction: `________________________________`
+- [o] Approved as-is  ·  Correction: `________________________________`
 
 ---
 
